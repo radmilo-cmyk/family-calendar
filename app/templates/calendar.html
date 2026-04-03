@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}{{ year }}-{{ "%02d"|format(month) }} — Family Calendar{% endblock %}
+
+{% block content %}
+
+{# Python's calendar module uses 0=Monday…6=Sunday. We show Mon–Sun headers. #}
+{% set month_name = ["", "January","February","March","April","May","June",
+                        "July","August","September","October","November","December"][month] %}
+
+<div class="cal-header">
+  <a class="nav-btn" href="/?year={{ prev_year }}&month={{ prev_month }}">&#8592;</a>
+  <h2>{{ month_name }} {{ year }}</h2>
+  <a class="nav-btn" href="/?year={{ next_year }}&month={{ next_month }}">&#8594;</a>
+</div>
+
+<table class="calendar">
+  <thead>
+    <tr>
+      <th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th>
+      <th class="weekend">Sat</th><th class="weekend">Sun</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for week in grid %}
+    <tr>
+      {% for day in week %}
+        {% if day is none %}
+          <td class="empty"></td>
+        {% else %}
+          <td class="day{% if day in dates_with_entries %} has-entries{% endif %}">
+            <a href="/day/{{ day.isoformat() }}">{{ day.day }}</a>
+          </td>
+        {% endif %}
+      {% endfor %}
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% endblock %}
