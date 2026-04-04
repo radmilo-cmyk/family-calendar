@@ -28,8 +28,12 @@
         {% if day is none %}
           <td class="empty"></td>
         {% else %}
-          <td class="day{% if day in dates_with_entries %} has-entries{% endif %}">
-            <a href="/day/{{ day.isoformat() }}">{{ day.day }}</a>
+          {% set is_today = (day.year == today.year and day.month == today.month and day.day == today.day) %}
+          <td class="day{% if day in dates_with_entries %} has-entries{% endif %}{% if is_today %} today{% endif %}">
+            <a href="/day/{{ day.isoformat() }}">
+              <span class="day-num">{{ day.day }}</span>
+              {% if day in dates_with_entries %}<span class="entry-dot"></span>{% endif %}
+            </a>
           </td>
         {% endif %}
       {% endfor %}

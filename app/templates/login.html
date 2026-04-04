@@ -4,11 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Family Calendar — Login</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Quicksand:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
   <div class="login-wrapper">
-    <h1>📅 Family Calendar</h1>
+    <h1>Family Calendar</h1>
+    <p class="login-subtitle">Sign in to see your family's schedule</p>
 
     {% if error %}
       <p class="error">{{ error }}</p>
@@ -21,7 +25,7 @@
       <label for="password">Password</label>
       <input type="password" id="password" name="password" required>
 
-      <button type="submit">Log in</button>
+      <button type="submit">Sign in</button>
     </form>
   </div>
 </body>

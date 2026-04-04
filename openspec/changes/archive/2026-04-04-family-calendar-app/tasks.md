@@ -48,6 +48,6 @@
 
 - [x] 7.1 Add basic CSS in `app/static/style.css` for mobile-friendly layout (readable on 320px, tappable targets)
 - [x] 7.2 Test the full flow locally: login → view calendar → add entries → delete an entry → logout
-- [ ] 7.3 Test the WhatsApp digest manually by calling `send_digest()` directly and checking both phones — requires real Twilio credentials in .env
+- [x] 7.3 Test the WhatsApp digest manually by calling `send_digest()` directly and checking both phones — requires real Twilio credentials in .env
 - [x] 7.4 Verify the app runs correctly with `uvicorn app.main:app --reload`
 - [x] 7.5 Create a minimal `README.md` documenting: setup steps, `.env` variables needed, how to run, Twilio sandbox opt-in instructions

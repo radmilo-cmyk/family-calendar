@@ -4,52 +4,93 @@
 
 {% block content %}
 
+{# SVG icon definitions #}
+{% set icon_calendar %}
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+{% endset %}
+
+{% set icon_chore %}
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 22v-8.5L12 2l9 11.5V22"/><path d="M9 22v-6h6v6"/></svg>
+{% endset %}
+
+{% set icon_message %}
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+{% endset %}
+
+{% set icon_add %}
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+{% endset %}
+
+{% set icon_delete %}
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+{% endset %}
+
+{% set icon_back %}
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+{% endset %}
+
 <div class="day-header">
-  <a href="/" class="back-link">&#8592; Back to calendar</a>
+  <a href="/" class="back-link">{{ icon_back }} Back to calendar</a>
   <h2>{{ day.strftime("%A, %B %d %Y") }}</h2>
 </div>
 
 {% macro entry_list(entries, label, icon) %}
 <section class="entry-section">
-  <h3>{{ icon }} {{ label }}</h3>
+  <div class="entry-section-header">
+    <span class="section-icon">{{ icon }}</span>
+    <h3>{{ label }}</h3>
+  </div>
   {% if entries %}
     <ul>
       {% for entry in entries %}
       <li class="entry-item">
-        <span class="entry-content">{{ entry.content }}</span>
-        <span class="entry-author">— {{ entry.author }}</span>
+        <div style="flex:1">
+          <div class="entry-content">{{ entry.content }}</div>
+          <div class="entry-author">— {{ entry.author }}</div>
+        </div>
         <form method="post" action="/entries/{{ entry.id }}/delete" class="delete-form">
-          <button type="submit" class="btn-delete" title="Delete">✕</button>
+          <button type="submit" class="btn-delete" aria-label="Delete entry">{{ icon_delete }}</button>
         </form>
       </li>
       {% endfor %}
     </ul>
   {% else %}
-    <p class="empty-state">No {{ label|lower }} for this day.</p>
+    <p class="empty-state">Nothing here yet.</p>
   {% endif %}
 </section>
 {% endmacro %}
 
-{{ entry_list(events, "Events", "📅") }}
-{{ entry_list(chores, "Chores", "🧹") }}
-{{ entry_list(messages, "Messages", "💬") }}
+{{ entry_list(events, "Events", icon_calendar) }}
+{{ entry_list(chores, "Chores", icon_chore) }}
+{{ entry_list(messages, "Messages", icon_message) }}
 
 {# Add entry form #}
 <section class="add-entry">
-  <h3>Add something</h3>
-  <form method="post" action="/day/{{ day.isoformat() }}/entries">
+  <div class="add-entry-header">
+    <span class="section-icon">{{ icon_add }}</span>
+    <h3>Add something</h3>
+  </div>
+  <form method="post" action="/day/{{ day.isoformat() }}/entries" id="add-entry-form">
     <div class="form-row">
       <select name="entry_type" required>
-        <option value="event">📅 Event</option>
-        <option value="chore">🧹 Chore</option>
-        <option value="message">💬 Message</option>
+        <option value="event">Event</option>
+        <option value="chore">Chore</option>
+        <option value="message">Message</option>
       </select>
     </div>
     <div class="form-row">
       <textarea name="content" rows="2" placeholder="What's happening?" required></textarea>
     </div>
-    <button type="submit" class="btn-add">Add</button>
+    <button type="submit" class="btn-add" id="add-btn">Add</button>
   </form>
 </section>
+
+<script>
+  document.getElementById('add-entry-form').addEventListener('submit', function () {
+    var btn = document.getElementById('add-btn');
+    btn.disabled = true;
+    btn.textContent = 'Adding\u2026';
+  });
+</script>
 
 {% endblock %}

@@ -137,6 +137,7 @@ async def calendar_root(
         "prev_month": prev_month,
         "next_year": next_year,
         "next_month": next_month,
+        "today": now.date(),
     })
 
 
