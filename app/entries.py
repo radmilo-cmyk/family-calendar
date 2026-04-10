@@ -65,3 +65,13 @@ def delete_entry(db: Session, entry_id: int) -> None:
     if entry:
         db.delete(entry)
         db.commit()
+
+
+def update_entry(db: Session, entry_id: int, content: str, author: str, entry_type: str) -> None:
+    """Update content, author, and type of an existing entry."""
+    entry = get_entry(db, entry_id)
+    if entry:
+        entry.content = content
+        entry.author = author
+        entry.type = entry_type
+        db.commit()

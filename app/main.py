@@ -213,3 +213,23 @@ async def delete_entry_route(
     date_str = entry.date.isoformat()
     delete_entry(db, entry_id)
     return RedirectResponse(f"/day/{date_str}", status_code=302)
+
+
+@app.post("/entries/{entry_id}/edit")
+async def edit_entry_route(
+    entry_id: int,
+    entry_type: str = Form(...),
+    content: str = Form(...),
+    author: str = Form(...),
+    db: Session = Depends(get_db),
+    current_user: str = Depends(require_auth),
+):
+    from app.entries import update_entry, get_entry
+    entry = get_entry(db, entry_id)
+    if entry is None:
+        return RedirectResponse("/", status_code=302)
+    if entry_type not in ("event", "chore", "message") or not content.strip():
+        return RedirectResponse(f"/day/{entry.date.isoformat()}", status_code=302)
+    date_str = entry.date.isoformat()
+    update_entry(db, entry_id, content=content.strip(), author=author.strip() or current_user, entry_type=entry_type)
+    return RedirectResponse(f"/day/{date_str}", status_code=302)

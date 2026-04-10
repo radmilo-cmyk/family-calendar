@@ -25,6 +25,10 @@
 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
 {% endset %}
 
+{% set icon_edit %}
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+{% endset %}
+
 {% set icon_back %}
 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
 {% endset %}
@@ -43,13 +47,36 @@
   {% if entries %}
     <ul>
       {% for entry in entries %}
-      <li class="entry-item">
-        <div style="flex:1">
+      <li class="entry-item" id="entry-{{ entry.id }}">
+        <div class="entry-body">
           <div class="entry-content">{{ entry.content }}</div>
           <div class="entry-author">— {{ entry.author }}</div>
         </div>
-        <form method="post" action="/entries/{{ entry.id }}/delete" class="delete-form">
-          <button type="submit" class="btn-delete" aria-label="Delete entry">{{ icon_delete }}</button>
+        <div class="entry-actions">
+          <button type="button" class="btn-edit" aria-label="Edit entry"
+                  onclick="toggleEdit('entry-{{ entry.id }}')">{{ icon_edit }}</button>
+          <form method="post" action="/entries/{{ entry.id }}/delete" class="delete-form">
+            <button type="submit" class="btn-delete" aria-label="Delete entry">{{ icon_delete }}</button>
+          </form>
+        </div>
+        <form method="post" action="/entries/{{ entry.id }}/edit" class="edit-form">
+          <div class="edit-form-row">
+            <select name="entry_type">
+              <option value="event"{% if entry.type == 'event' %} selected{% endif %}>Event</option>
+              <option value="chore"{% if entry.type == 'chore' %} selected{% endif %}>Chore</option>
+              <option value="message"{% if entry.type == 'message' %} selected{% endif %}>Message</option>
+            </select>
+          </div>
+          <div class="edit-form-row">
+            <textarea name="content" rows="2" required>{{ entry.content }}</textarea>
+          </div>
+          <div class="edit-form-row">
+            <input type="text" name="author" value="{{ entry.author }}" placeholder="Your name" required>
+          </div>
+          <div class="edit-form-actions">
+            <button type="button" class="btn-cancel" onclick="closeEdit('entry-{{ entry.id }}')">Cancel</button>
+            <button type="submit" class="btn-save">Save</button>
+          </div>
         </form>
       </li>
       {% endfor %}
@@ -86,6 +113,22 @@
 </section>
 
 <script>
+  function toggleEdit(id) {
+    document.querySelectorAll('.entry-item.editing').forEach(function(el) {
+      if (el.id !== id) el.classList.remove('editing');
+    });
+    document.getElementById(id).classList.toggle('editing');
+  }
+  function closeEdit(id) {
+    document.getElementById(id).classList.remove('editing');
+  }
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      document.querySelectorAll('.entry-item.editing').forEach(function(el) {
+        el.classList.remove('editing');
+      });
+    }
+  });
   document.getElementById('add-entry-form').addEventListener('submit', function () {
     var btn = document.getElementById('add-btn');
     btn.disabled = true;
