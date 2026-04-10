@@ -1,16 +1,23 @@
+import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 
-# SQLite stores everything in a single file — "calendar.db" in the project root.
-# The three slashes mean a relative path: sqlite:///./calendar.db
-DATABASE_URL = "sqlite:///./calendar.db"
+# Read DATABASE_URL from environment variable.
+# - In production (Render): set DATABASE_URL to your Supabase PostgreSQL URI
+# - In local dev: falls back to SQLite file if DATABASE_URL is not set
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./calendar.db")
 
-# The engine is the low-level connection to the database file.
-# check_same_thread=False is needed because FastAPI handles requests across threads.
-engine = create_engine(
-    DATABASE_URL,
-    connect_args={"check_same_thread": False},
-)
+# Supabase sometimes gives URLs starting with "postgres://" but SQLAlchemy
+# requires "postgresql://" — this fixes that silently.
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+# SQLite needs an extra argument because FastAPI uses multiple threads.
+# PostgreSQL handles this natively, so no extra args needed.
+if DATABASE_URL.startswith("sqlite"):
+    engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+else:
+    engine = create_engine(DATABASE_URL)
 
 # A session factory — each request gets its own session (database conversation).
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
