@@ -91,6 +91,11 @@ async def login_submit(
     return response
 
 
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
+
+
 @app.get("/logout")
 async def logout():
     """Clear the session cookie and go back to login."""
