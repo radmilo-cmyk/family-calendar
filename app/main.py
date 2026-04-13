@@ -98,14 +98,50 @@ async def health():
 
 @app.get("/debug/send-digest")
 async def debug_send_digest():
-    """Manually trigger the digest — for debugging only."""
-    from app.notifications import send_digest
+    """Manually trigger the digest with full error reporting."""
+    from app import config
+    from app.notifications import build_digest_message
+    from twilio.rest import Client
+    from datetime import date, timedelta
     import traceback
+    import pytz
+
+    results = {
+        "twilio_configured": config.TWILIO_CONFIGURED,
+        "from": config.TWILIO_WHATSAPP_FROM,
+        "phone_user1": config.PHONE_USER1,
+        "phone_user2": config.PHONE_USER2,
+        "sends": [],
+    }
+
+    if not config.TWILIO_CONFIGURED:
+        return {"status": "error", "reason": "TWILIO_CONFIGURED is False", **results}
+
+    tz = pytz.timezone(config.TIMEZONE)
+    from datetime import datetime
+    today = datetime.now(tz).date()
+    tomorrow = today + timedelta(days=1)
+
     try:
-        send_digest()
-        return {"status": "ok", "message": "digest triggered — check WhatsApp"}
+        message = build_digest_message(today, tomorrow)
+        results["message_preview"] = message[:200]
     except Exception as e:
-        return {"status": "error", "error": str(e), "traceback": traceback.format_exc()}
+        return {"status": "error", "stage": "build_message", "error": str(e), "traceback": traceback.format_exc()}
+
+    client = Client(config.TWILIO_ACCOUNT_SID, config.TWILIO_AUTH_TOKEN)
+
+    for phone in [config.PHONE_USER1, config.PHONE_USER2]:
+        try:
+            msg = client.messages.create(
+                from_=config.TWILIO_WHATSAPP_FROM,
+                to=phone,
+                body=message,
+            )
+            results["sends"].append({"phone": phone, "sid": msg.sid, "status": msg.status})
+        except Exception as e:
+            results["sends"].append({"phone": phone, "error": str(e), "traceback": traceback.format_exc()})
+
+    return results
 
 
 @app.get("/logout")
