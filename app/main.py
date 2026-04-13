@@ -96,6 +96,18 @@ async def health():
     return {"status": "ok"}
 
 
+@app.get("/debug/send-digest")
+async def debug_send_digest():
+    """Manually trigger the digest — for debugging only."""
+    from app.notifications import send_digest
+    import traceback
+    try:
+        send_digest()
+        return {"status": "ok", "message": "digest triggered — check WhatsApp"}
+    except Exception as e:
+        return {"status": "error", "error": str(e), "traceback": traceback.format_exc()}
+
+
 @app.get("/logout")
 async def logout():
     """Clear the session cookie and go back to login."""
