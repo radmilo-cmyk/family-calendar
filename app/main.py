@@ -292,11 +292,21 @@ async def toggle_chore_route(
     db: Session = Depends(get_db),
     current_user: str = Depends(require_auth),
 ):
-    from app.entries import toggle_chore_done, get_entry
+    from app.entries import toggle_chore_done, get_entry, delete_entry
+    from app.default_chores import get_all_default_chores
     entry = get_entry(db, entry_id)
     if entry is None:
         return RedirectResponse("/", status_code=302)
     date_str = entry.date.isoformat()
+
+    # If unchecking a chore that matches a default, delete it entirely so it
+    # returns to virtual state instead of becoming a stray regular chore.
+    if entry.done:
+        default_contents = {d.content.lower() for d in get_all_default_chores(db)}
+        if entry.content.lower() in default_contents:
+            delete_entry(db, entry_id)
+            return RedirectResponse(f"/day/{date_str}", status_code=302)
+
     toggle_chore_done(db, entry_id, current_user)
     return RedirectResponse(f"/day/{date_str}", status_code=302)
 
