@@ -23,18 +23,14 @@ USERS = {
     _require("USER2_USERNAME"): _require("USER2_PASSWORD"),
 }
 
-# Twilio — we read these but don't require them at import time.
+# Telegram — we read these but don't require them at import time.
 # If they're missing, the scheduler will skip setup and log a warning.
-TWILIO_ACCOUNT_SID = os.environ.get("TWILIO_ACCOUNT_SID", "")
-TWILIO_AUTH_TOKEN = os.environ.get("TWILIO_AUTH_TOKEN", "")
-TWILIO_WHATSAPP_FROM = os.environ.get("TWILIO_WHATSAPP_FROM", "")
-PHONE_USER1 = os.environ.get("PHONE_USER1", "")
-PHONE_USER2 = os.environ.get("PHONE_USER2", "")
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_CHAT_ID_USER1 = os.environ.get("TELEGRAM_CHAT_ID_USER1", "")
+TELEGRAM_CHAT_ID_USER2 = os.environ.get("TELEGRAM_CHAT_ID_USER2", "")
 
-TWILIO_CONFIGURED = all([
-    TWILIO_ACCOUNT_SID,
-    TWILIO_AUTH_TOKEN,
-    TWILIO_WHATSAPP_FROM,
-    PHONE_USER1,
-    PHONE_USER2,
+TELEGRAM_CONFIGURED = all([
+    TELEGRAM_BOT_TOKEN,
+    TELEGRAM_CHAT_ID_USER1,
+    TELEGRAM_CHAT_ID_USER2,
 ])

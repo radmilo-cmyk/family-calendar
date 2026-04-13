@@ -1,8 +1,10 @@
 import logging
+import urllib.request
+import urllib.parse
+import json
 from datetime import date, timedelta
 
 import pytz
-from twilio.rest import Client
 
 from app import config
 
@@ -12,12 +14,6 @@ ENTRY_ICONS = {"event": "📅", "chore": "🧹", "message": "💬"}
 
 
 def build_digest_message(today: date, tomorrow: date) -> str:
-    """
-    Build the WhatsApp digest text for today and tomorrow.
-    We import get_entries_for_range here (inside the function) to avoid
-    circular imports — notifications.py and entries.py don't need to know
-    about each other at module load time.
-    """
     from app.database import SessionLocal
     from app.entries import get_entries_for_range
 
@@ -27,7 +23,6 @@ def build_digest_message(today: date, tomorrow: date) -> str:
     finally:
         db.close()
 
-    # Group entries by date
     by_date: dict[date, list] = {today: [], tomorrow: []}
     for entry in entries:
         if entry.date in by_date:
@@ -42,25 +37,32 @@ def build_digest_message(today: date, tomorrow: date) -> str:
         if not day_entries:
             lines.append("  All clear ✨")
         else:
-            # Group by type within the day
             for entry_type in ("event", "chore", "message"):
                 typed = [e for e in day_entries if e.type == entry_type]
                 for e in typed:
                     icon = ENTRY_ICONS[entry_type]
-                    lines.append(f"  {icon} {e.content} _(by {e.author})_")
+                    lines.append(f"  {icon} {e.content} _\(by {e.author}\)_")
 
-        lines.append("")  # blank line between days
+        lines.append("")
 
     return "\n".join(lines).strip()
 
 
+def send_telegram_message(chat_id: str, text: str) -> dict:
+    url = f"https://api.telegram.org/bot{config.TELEGRAM_BOT_TOKEN}/sendMessage"
+    payload = json.dumps({
+        "chat_id": chat_id,
+        "text": text,
+        "parse_mode": "MarkdownV2",
+    }).encode("utf-8")
+    req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req) as resp:
+        return json.loads(resp.read())
+
+
 def send_digest() -> None:
-    """
-    Send the daily digest to both configured phone numbers.
-    Called by the scheduler at 08:00 Amsterdam time.
-    """
-    if not config.TWILIO_CONFIGURED:
-        logger.warning("Twilio not configured — skipping digest.")
+    if not config.TELEGRAM_CONFIGURED:
+        logger.warning("Telegram not configured — skipping digest.")
         return
 
     tz = pytz.timezone(config.TIMEZONE)
@@ -70,16 +72,9 @@ def send_digest() -> None:
 
     message = build_digest_message(today, tomorrow)
 
-    client = Client(config.TWILIO_ACCOUNT_SID, config.TWILIO_AUTH_TOKEN)
-
-    for phone in [config.PHONE_USER1, config.PHONE_USER2]:
+    for chat_id in [config.TELEGRAM_CHAT_ID_USER1, config.TELEGRAM_CHAT_ID_USER2]:
         try:
-            client.messages.create(
-                from_=config.TWILIO_WHATSAPP_FROM,
-                to=phone,
-                body=message,
-            )
-            logger.info("Digest sent to %s", phone)
+            send_telegram_message(chat_id, message)
+            logger.info("Digest sent to chat_id %s", chat_id)
         except Exception as e:
-            # Log the error but keep going — we still want to try the second number.
-            logger.error("Failed to send digest to %s: %s", phone, e)
+            logger.error("Failed to send digest to %s: %s", chat_id, e)

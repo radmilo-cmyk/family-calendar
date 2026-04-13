@@ -14,12 +14,11 @@ def start_scheduler() -> None:
     Register the daily digest job and start the scheduler.
     Called once at app startup.
     """
-    if not config.TWILIO_CONFIGURED:
+    if not config.TELEGRAM_CONFIGURED:
         logger.warning(
-            "Twilio credentials not fully configured. "
-            "WhatsApp digest scheduler will NOT start. "
-            "Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_FROM, "
-            "PHONE_USER1, and PHONE_USER2 in your .env file."
+            "Telegram credentials not fully configured. "
+            "Digest scheduler will NOT start. "
+            "Set TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID_USER1, and TELEGRAM_CHAT_ID_USER2 in your .env file."
         )
         return
 

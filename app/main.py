@@ -98,27 +98,24 @@ async def health():
 
 @app.get("/debug/send-digest")
 async def debug_send_digest():
-    """Manually trigger the digest with full error reporting."""
+    """Manually trigger the Telegram digest with full error reporting."""
     from app import config
-    from app.notifications import build_digest_message
-    from twilio.rest import Client
-    from datetime import date, timedelta
+    from app.notifications import build_digest_message, send_telegram_message
+    from datetime import datetime, timedelta
     import traceback
     import pytz
 
     results = {
-        "twilio_configured": config.TWILIO_CONFIGURED,
-        "from": config.TWILIO_WHATSAPP_FROM,
-        "phone_user1": config.PHONE_USER1,
-        "phone_user2": config.PHONE_USER2,
+        "telegram_configured": config.TELEGRAM_CONFIGURED,
+        "chat_id_user1": config.TELEGRAM_CHAT_ID_USER1,
+        "chat_id_user2": config.TELEGRAM_CHAT_ID_USER2,
         "sends": [],
     }
 
-    if not config.TWILIO_CONFIGURED:
-        return {"status": "error", "reason": "TWILIO_CONFIGURED is False", **results}
+    if not config.TELEGRAM_CONFIGURED:
+        return {"status": "error", "reason": "TELEGRAM_CONFIGURED is False", **results}
 
     tz = pytz.timezone(config.TIMEZONE)
-    from datetime import datetime
     today = datetime.now(tz).date()
     tomorrow = today + timedelta(days=1)
 
@@ -128,18 +125,12 @@ async def debug_send_digest():
     except Exception as e:
         return {"status": "error", "stage": "build_message", "error": str(e), "traceback": traceback.format_exc()}
 
-    client = Client(config.TWILIO_ACCOUNT_SID, config.TWILIO_AUTH_TOKEN)
-
-    for phone in [config.PHONE_USER1, config.PHONE_USER2]:
+    for chat_id in [config.TELEGRAM_CHAT_ID_USER1, config.TELEGRAM_CHAT_ID_USER2]:
         try:
-            msg = client.messages.create(
-                from_=config.TWILIO_WHATSAPP_FROM,
-                to=phone,
-                body=message,
-            )
-            results["sends"].append({"phone": phone, "sid": msg.sid, "status": msg.status})
+            resp = send_telegram_message(chat_id, message)
+            results["sends"].append({"chat_id": chat_id, "ok": resp.get("ok")})
         except Exception as e:
-            results["sends"].append({"phone": phone, "error": str(e), "traceback": traceback.format_exc()})
+            results["sends"].append({"chat_id": chat_id, "error": str(e), "traceback": traceback.format_exc()})
 
     return results
 
