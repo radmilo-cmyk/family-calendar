@@ -87,8 +87,92 @@
 </section>
 {% endmacro %}
 
+{# Chores section: checklist with virtual defaults + real entries #}
+{% macro chore_list(chores, virtual_defaults, icon) %}
+<section class="entry-section">
+  <div class="entry-section-header">
+    <span class="section-icon">{{ icon }}</span>
+    <h3>Chores</h3>
+  </div>
+  {% if virtual_defaults or chores %}
+    <ul>
+
+      {# Virtual default chores (not yet done today — no DB entry yet) #}
+      {% for default in virtual_defaults %}
+      <li class="chore-item" id="default-{{ default.id }}">
+        <form method="post" action="/day/{{ day.isoformat() }}/chores/complete-default"
+              class="chore-toggle-form" id="toggle-default-{{ default.id }}">
+          <input type="hidden" name="content" value="{{ default.content }}">
+          <input type="checkbox" class="chore-checkbox chore-checkbox--virtual"
+                 aria-label="Mark done"
+                 data-form="toggle-default-{{ default.id }}">
+        </form>
+        <div class="chore-body">
+          <div class="chore-content">{{ default.content }}</div>
+          <div class="chore-meta">
+            <span class="chore-default-badge">daily default</span>
+          </div>
+        </div>
+      </li>
+      {% endfor %}
+
+      {# Real chore entries (user-added or previously completed defaults) #}
+      {% for entry in chores %}
+      <li class="chore-item" id="entry-{{ entry.id }}">
+        <form method="post" action="/entries/{{ entry.id }}/toggle"
+              class="chore-toggle-form" id="toggle-{{ entry.id }}">
+          <input type="checkbox" class="chore-checkbox"
+                 {% if entry.done %}checked{% endif %}
+                 aria-label="Toggle done"
+                 data-form="toggle-{{ entry.id }}">
+        </form>
+        <div class="chore-body">
+          <div class="chore-content{% if entry.done %} chore-done{% endif %}">{{ entry.content }}</div>
+          <div class="chore-meta">
+            <span class="chore-author">— {{ entry.author }}</span>
+            {% if entry.done and entry.done_by %}
+            <span class="chore-done-by">✓ done by {{ entry.done_by }}</span>
+            {% endif %}
+          </div>
+        </div>
+        <div class="entry-actions">
+          <button type="button" class="btn-edit" aria-label="Edit entry"
+                  onclick="toggleEdit('entry-{{ entry.id }}')">{{ icon_edit }}</button>
+          <form method="post" action="/entries/{{ entry.id }}/delete" class="delete-form">
+            <button type="submit" class="btn-delete" aria-label="Delete entry">{{ icon_delete }}</button>
+          </form>
+        </div>
+        <form method="post" action="/entries/{{ entry.id }}/edit" class="edit-form">
+          <div class="edit-form-row">
+            <select name="entry_type">
+              <option value="chore" selected>Chore</option>
+              <option value="event">Event</option>
+              <option value="message">Message</option>
+            </select>
+          </div>
+          <div class="edit-form-row">
+            <textarea name="content" rows="2" required>{{ entry.content }}</textarea>
+          </div>
+          <div class="edit-form-row">
+            <input type="text" name="author" value="{{ entry.author }}" placeholder="Your name" required>
+          </div>
+          <div class="edit-form-actions">
+            <button type="button" class="btn-cancel" onclick="closeEdit('entry-{{ entry.id }}')">Cancel</button>
+            <button type="submit" class="btn-save">Save</button>
+          </div>
+        </form>
+      </li>
+      {% endfor %}
+
+    </ul>
+  {% else %}
+    <p class="empty-state">Nothing here yet.</p>
+  {% endif %}
+</section>
+{% endmacro %}
+
 {{ entry_list(events, "Events", icon_calendar) }}
-{{ entry_list(chores, "Chores", icon_chore) }}
+{{ chore_list(chores, virtual_defaults, icon_chore) }}
 {{ entry_list(messages, "Messages", icon_message) }}
 
 {# Add entry form #}
@@ -133,6 +217,14 @@
     var btn = document.getElementById('add-btn');
     btn.disabled = true;
     btn.textContent = 'Adding\u2026';
+  });
+
+  // Submit the chore toggle form when a checkbox changes.
+  document.querySelectorAll('.chore-checkbox').forEach(function(cb) {
+    cb.addEventListener('change', function() {
+      var formId = this.getAttribute('data-form');
+      document.getElementById(formId).submit();
+    });
   });
 </script>
 

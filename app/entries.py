@@ -75,3 +75,32 @@ def update_entry(db: Session, entry_id: int, content: str, author: str, entry_ty
         entry.author = author
         entry.type = entry_type
         db.commit()
+
+
+def toggle_chore_done(db: Session, entry_id: int, current_user: str) -> None:
+    """Flip a chore's done state. If undone → done (record who did it). If done → undone."""
+    entry = get_entry(db, entry_id)
+    if entry and entry.type == "chore":
+        if entry.done:
+            entry.done = False
+            entry.done_by = None
+        else:
+            entry.done = True
+            entry.done_by = current_user
+        db.commit()
+
+
+def complete_virtual_default(db: Session, day: date, content: str, current_user: str) -> Entry:
+    """Create a chore entry for a default chore and immediately mark it done."""
+    entry = Entry(
+        date=day,
+        type="chore",
+        content=content,
+        author=current_user,
+        done=True,
+        done_by=current_user,
+    )
+    db.add(entry)
+    db.commit()
+    db.refresh(entry)
+    return entry

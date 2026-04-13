@@ -21,7 +21,7 @@ async def lifespan(app: FastAPI):
     """
     # Create all database tables defined in our models (if they don't exist yet).
     # We import models here so SQLAlchemy knows about the Entry table.
-    import app.models  # noqa: F401
+    import app.models  # noqa: F401 — registers Entry + DefaultChore with SQLAlchemy
     Base.metadata.create_all(bind=engine)
     logger.info("Database tables ready.")
 
@@ -198,6 +198,7 @@ async def day_view(
 ):
     from datetime import date
     from app.entries import get_entries_for_date
+    from app.default_chores import get_all_default_chores
 
     try:
         day = date.fromisoformat(date_str)
@@ -209,12 +210,18 @@ async def day_view(
     chores = [e for e in entries if e.type == "chore"]
     messages = [e for e in entries if e.type == "message"]
 
+    # Build virtual defaults: defaults not already present in real chores (case-insensitive match).
+    real_chore_contents = {c.content.lower() for c in chores}
+    all_defaults = get_all_default_chores(db)
+    virtual_defaults = [d for d in all_defaults if d.content.lower() not in real_chore_contents]
+
     return templates.TemplateResponse(request, "day.html", {
         "current_user": current_user,
         "day": day,
         "events": events,
         "chores": chores,
         "messages": messages,
+        "virtual_defaults": virtual_defaults,
     })
 
 
@@ -277,3 +284,76 @@ async def edit_entry_route(
     date_str = entry.date.isoformat()
     update_entry(db, entry_id, content=content.strip(), author=author.strip() or current_user, entry_type=entry_type)
     return RedirectResponse(f"/day/{date_str}", status_code=302)
+
+
+@app.post("/entries/{entry_id}/toggle")
+async def toggle_chore_route(
+    entry_id: int,
+    db: Session = Depends(get_db),
+    current_user: str = Depends(require_auth),
+):
+    from app.entries import toggle_chore_done, get_entry
+    entry = get_entry(db, entry_id)
+    if entry is None:
+        return RedirectResponse("/", status_code=302)
+    date_str = entry.date.isoformat()
+    toggle_chore_done(db, entry_id, current_user)
+    return RedirectResponse(f"/day/{date_str}", status_code=302)
+
+
+@app.post("/day/{date_str}/chores/complete-default")
+async def complete_default_chore_route(
+    date_str: str,
+    content: str = Form(...),
+    db: Session = Depends(get_db),
+    current_user: str = Depends(require_auth),
+):
+    from datetime import date
+    from app.entries import complete_virtual_default
+    try:
+        day = date.fromisoformat(date_str)
+    except ValueError:
+        return RedirectResponse("/", status_code=302)
+    complete_virtual_default(db, day=day, content=content.strip(), current_user=current_user)
+    return RedirectResponse(f"/day/{date_str}", status_code=302)
+
+
+# ---------------------------------------------------------------------------
+# Settings routes
+# ---------------------------------------------------------------------------
+
+@app.get("/settings", response_class=HTMLResponse)
+async def settings_page(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: str = Depends(require_auth),
+):
+    from app.default_chores import get_all_default_chores
+    default_chores = get_all_default_chores(db)
+    return templates.TemplateResponse(request, "settings.html", {
+        "current_user": current_user,
+        "default_chores": default_chores,
+    })
+
+
+@app.post("/settings/default-chores")
+async def add_default_chore_route(
+    content: str = Form(...),
+    db: Session = Depends(get_db),
+    current_user: str = Depends(require_auth),
+):
+    from app.default_chores import create_default_chore
+    if content.strip():
+        create_default_chore(db, content=content.strip())
+    return RedirectResponse("/settings", status_code=302)
+
+
+@app.post("/settings/default-chores/{chore_id}/delete")
+async def delete_default_chore_route(
+    chore_id: int,
+    db: Session = Depends(get_db),
+    current_user: str = Depends(require_auth),
+):
+    from app.default_chores import delete_default_chore
+    delete_default_chore(db, chore_id)
+    return RedirectResponse("/settings", status_code=302)

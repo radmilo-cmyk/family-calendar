@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}Settings — Family Calendar{% endblock %}
+
+{% block content %}
+
+{% set icon_back %}
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+{% endset %}
+
+{% set icon_chore %}
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+{% endset %}
+
+<div class="day-header">
+  <a href="/" class="back-link">{{ icon_back }} Back to calendar</a>
+  <h2>Settings</h2>
+</div>
+
+<section class="entry-section">
+  <div class="entry-section-header">
+    <span class="section-icon">{{ icon_chore }}</span>
+    <div>
+      <h3>Default Daily Chores</h3>
+      <p class="settings-subtitle">Show on every day automatically</p>
+    </div>
+  </div>
+
+  {% if default_chores %}
+    <ul>
+      {% for chore in default_chores %}
+      <li class="default-chore-row">
+        <span class="default-chore-text">{{ chore.content }}</span>
+        <form method="post" action="/settings/default-chores/{{ chore.id }}/delete" class="delete-form">
+          <button type="submit" class="btn-remove" aria-label="Remove {{ chore.content }}">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            Remove
+          </button>
+        </form>
+      </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="empty-state">No default chores yet. Add one below.</p>
+  {% endif %}
+
+  <form method="post" action="/settings/default-chores" class="add-default-form">
+    <input type="text" name="content" placeholder="New default chore…" required maxlength="200">
+    <button type="submit" class="btn-add-small">Add</button>
+  </form>
+</section>
+
+{% endblock %}
