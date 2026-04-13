@@ -1,10 +1,23 @@
 from sqlalchemy.orm import Session
 from app.models import DefaultChore
 
+# In-memory cache — default chores rarely change so we avoid a Supabase
+# round-trip on every day view load and every toggle. Invalidated whenever
+# the list is mutated (add or remove).
+_cache: list[DefaultChore] | None = None
+
+
+def _invalidate():
+    global _cache
+    _cache = None
+
 
 def get_all_default_chores(db: Session) -> list[DefaultChore]:
-    """Return all default chores ordered by position then id."""
-    return db.query(DefaultChore).order_by(DefaultChore.position, DefaultChore.id).all()
+    """Return all default chores ordered by position then id. Uses in-memory cache."""
+    global _cache
+    if _cache is None:
+        _cache = db.query(DefaultChore).order_by(DefaultChore.position, DefaultChore.id).all()
+    return _cache
 
 
 def create_default_chore(db: Session, content: str) -> DefaultChore:
@@ -13,6 +26,7 @@ def create_default_chore(db: Session, content: str) -> DefaultChore:
     db.add(chore)
     db.commit()
     db.refresh(chore)
+    _invalidate()
     return chore
 
 
@@ -22,3 +36,4 @@ def delete_default_chore(db: Session, chore_id: int) -> None:
     if chore:
         db.delete(chore)
         db.commit()
+        _invalidate()
