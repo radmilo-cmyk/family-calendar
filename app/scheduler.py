@@ -27,7 +27,7 @@ def start_scheduler() -> None:
     # CronTrigger(hour=8, minute=0) fires every day at 08:00 in the scheduler's timezone.
     _scheduler.add_job(
         send_digest,
-        trigger=CronTrigger(hour=8, minute=0),
+        trigger=CronTrigger(hour=8, minute=0, timezone=config.TIMEZONE),
         id="daily_digest",
         replace_existing=True,
     )

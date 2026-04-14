@@ -61,6 +61,8 @@ def send_telegram_message(chat_id: str, text: str) -> dict:
 
 
 def send_digest() -> None:
+    logger.info("send_digest() triggered")
+
     if not config.TELEGRAM_CONFIGURED:
         logger.warning("Telegram not configured — skipping digest.")
         return
@@ -70,7 +72,11 @@ def send_digest() -> None:
     today = datetime.now(tz).date()
     tomorrow = today + timedelta(days=1)
 
-    message = build_digest_message(today, tomorrow)
+    try:
+        message = build_digest_message(today, tomorrow)
+    except Exception as e:
+        logger.error("Failed to build digest message: %s", e)
+        return
 
     for chat_id in [config.TELEGRAM_CHAT_ID_USER1, config.TELEGRAM_CHAT_ID_USER2]:
         try:
