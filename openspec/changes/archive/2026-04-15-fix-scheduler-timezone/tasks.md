@@ -10,4 +10,4 @@
 ## 3. Deploy & Verify
 
 - [x] 3.1 Commit and push to GitHub (triggers Render auto-deploy)
-- [ ] 3.2 Confirm digest arrives at 08:00 Amsterdam time the next day
+- [x] 3.2 Confirm digest arrives at 08:00 Amsterdam time the next day

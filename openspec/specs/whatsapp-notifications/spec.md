@@ -4,11 +4,16 @@
 TBD - created by archiving change family-calendar-app. Update Purpose after archive.
 ## Requirements
 ### Requirement: A daily digest is sent to both users at 8am Amsterdam time
-The system SHALL send a WhatsApp message to both configured phone numbers every day at 08:00 Europe/Amsterdam time via the Twilio API. The digest covers today and tomorrow.
+The system SHALL send a WhatsApp message to both configured phone numbers every day at 08:00 Europe/Amsterdam time via the Twilio API. The digest covers today and tomorrow. The CronTrigger MUST be explicitly configured with `timezone="Europe/Amsterdam"` — relying on a scheduler-level default timezone is not permitted.
 
 #### Scenario: Digest sent at 8am
 - **WHEN** the clock reaches 08:00 Europe/Amsterdam
 - **THEN** the system sends one WhatsApp message to each configured phone number
+
+#### Scenario: CronTrigger timezone is explicit
+- **GIVEN** the scheduler is configured
+- **WHEN** the CronTrigger for the daily digest is defined
+- **THEN** it includes `timezone="Europe/Amsterdam"` as an explicit parameter, not relying on any scheduler-level default
 
 #### Scenario: Digest includes today and tomorrow
 - **WHEN** the digest is sent
