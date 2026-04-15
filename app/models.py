@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, String, Date, Boolean
 from app.database import Base
 
 
+
 class Entry(Base):
     # This tells SQLAlchemy which table in the database this class maps to.
     __tablename__ = "entries"
@@ -25,6 +26,11 @@ class Entry(Base):
     # Chore-specific: whether the chore is done and who did it.
     done = Column(Boolean, default=False, nullable=False)
     done_by = Column(String, nullable=True)
+
+    # Carryover tracking: True when this entry was created by the midnight rollover job.
+    carried_over = Column(Boolean, default=False, nullable=False)
+    # The date the chore was first manually added (None for non-carried-over entries).
+    original_date = Column(Date, nullable=True)
 
 
 class DefaultChore(Base):

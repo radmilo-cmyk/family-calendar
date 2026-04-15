@@ -540,6 +540,16 @@ table.calendar td.has-entries a { font-weight: 600; }
   padding: 1px 8px;
 }
 
+/* "↩ from Apr 12" carryover badge */
+.chore-carryover-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #b45309;
+  background: rgba(180, 83, 9, 0.08);
+  border-radius: 20px;
+  padding: 1px 8px;
+}
+
 /* ── Settings Page ── */
 .settings-subtitle {
   font-size: 0.8rem;

@@ -130,6 +130,9 @@
           <div class="chore-content{% if entry.done %} chore-done{% endif %}">{{ entry.content }}</div>
           <div class="chore-meta">
             <span class="chore-author">— {{ entry.author }}</span>
+            {% if entry.carried_over and entry.original_date %}
+            <span class="chore-carryover-badge">↩ from {{ entry.original_date.strftime('%b %-d') }}</span>
+            {% endif %}
             {% if entry.done and entry.done_by %}
             <span class="chore-done-by">✓ done by {{ entry.done_by }}</span>
             {% endif %}
