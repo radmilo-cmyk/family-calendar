@@ -34,4 +34,4 @@ class DefaultChore(Base):
     id = Column(Integer, primary_key=True, index=True)
     content = Column(String, nullable=False)
     # Controls display order (lower = first).
-    position = Column(Integer, default=0, nullable=False)
+    sort_order = Column(Integer, default=0, nullable=False)

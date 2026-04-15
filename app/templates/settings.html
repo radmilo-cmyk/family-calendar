@@ -27,9 +27,12 @@
   </div>
 
   {% if default_chores %}
-    <ul>
+    <ul id="default-chores-list">
       {% for chore in default_chores %}
-      <li class="default-chore-row">
+      <li class="default-chore-row" draggable="true" data-id="{{ chore.id }}">
+        <span class="drag-handle" aria-hidden="true">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="5" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="19" r="1"/></svg>
+        </span>
         <span class="default-chore-text">{{ chore.content }}</span>
         <form method="post" action="/settings/default-chores/{{ chore.id }}/delete" class="delete-form">
           <button type="submit" class="btn-remove" aria-label="Remove {{ chore.content }}">
@@ -43,6 +46,52 @@
   {% else %}
     <p class="empty-state">No default chores yet. Add one below.</p>
   {% endif %}
+
+<script>
+(function () {
+  const list = document.getElementById('default-chores-list');
+  if (!list) return;
+
+  let dragged = null;
+
+  list.addEventListener('dragstart', function (e) {
+    dragged = e.target.closest('li');
+    if (dragged) dragged.style.opacity = '0.4';
+  });
+
+  list.addEventListener('dragend', function (e) {
+    const item = e.target.closest('li');
+    if (item) item.style.opacity = '';
+    list.querySelectorAll('li').forEach(li => li.classList.remove('drag-over'));
+  });
+
+  list.addEventListener('dragover', function (e) {
+    e.preventDefault();
+    const target = e.target.closest('li');
+    if (!target || target === dragged) return;
+    list.querySelectorAll('li').forEach(li => li.classList.remove('drag-over'));
+    target.classList.add('drag-over');
+    const rect = target.getBoundingClientRect();
+    const after = e.clientY > rect.top + rect.height / 2;
+    if (after) {
+      target.after(dragged);
+    } else {
+      target.before(dragged);
+    }
+  });
+
+  list.addEventListener('drop', function (e) {
+    e.preventDefault();
+    list.querySelectorAll('li').forEach(li => li.classList.remove('drag-over'));
+    const ids = Array.from(list.querySelectorAll('li')).map(li => parseInt(li.dataset.id, 10));
+    fetch('/settings/default-chores/reorder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: ids }),
+    });
+  });
+}());
+</script>
 
   <form method="post" action="/settings/default-chores" class="add-default-form">
     <input type="text" name="content" placeholder="New default chore…" required maxlength="200">

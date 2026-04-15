@@ -367,3 +367,16 @@ async def delete_default_chore_route(
     from app.default_chores import delete_default_chore
     delete_default_chore(db, chore_id)
     return RedirectResponse("/settings", status_code=302)
+
+
+@app.post("/settings/default-chores/reorder")
+async def reorder_default_chores_route(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: str = Depends(require_auth),
+):
+    from app.default_chores import reorder_default_chores
+    data = await request.json()
+    ids = data.get("ids", [])
+    reorder_default_chores(db, [int(i) for i in ids])
+    return {"ok": True}

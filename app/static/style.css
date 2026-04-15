@@ -672,3 +672,21 @@ table.calendar td.has-entries a { font-weight: 600; }
     transition: border-color 150ms ease, box-shadow 150ms ease;
   }
 }
+
+/* ── Mobile header fix ── */
+@media (max-width: 480px) {
+  header { flex-wrap: nowrap; }
+  header .site-title { font-size: 1.1rem; gap: 6px; }
+  header nav { gap: 12px; font-size: 0.8rem; }
+}
+
+/* ── Drag handle for default chore reordering ── */
+.drag-handle {
+  cursor: grab;
+  color: rgba(0,0,0,0.25);
+  padding: 0 6px 0 0;
+  flex-shrink: 0;
+  user-select: none;
+}
+.drag-handle:active { cursor: grabbing; }
+.default-chore-row.drag-over { opacity: 0.5; }
