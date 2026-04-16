@@ -12,6 +12,15 @@ logger = logging.getLogger(__name__)
 
 ENTRY_ICONS = {"event": "📅", "chore": "🧹", "message": "💬"}
 
+_MD_SPECIAL = r"\_*[]()~`>#+-=|{}.!"
+
+
+def _esc(text: str) -> str:
+    """Escape special chars for Telegram MarkdownV2."""
+    for ch in _MD_SPECIAL:
+        text = text.replace(ch, f"\\{ch}")
+    return text
+
 
 def build_digest_message(today: date, tomorrow: date) -> str:
     from app.database import SessionLocal
@@ -32,7 +41,8 @@ def build_digest_message(today: date, tomorrow: date) -> str:
 
     for day, label in [(today, "Today"), (tomorrow, "Tomorrow")]:
         day_entries = by_date[day]
-        lines.append(f"*{label} — {day.strftime('%A, %b %d')}*")
+        day_str = _esc(day.strftime('%A, %b %d'))
+        lines.append(f"*{label} — {day_str}*")
 
         if not day_entries:
             lines.append("  All clear ✨")
@@ -41,7 +51,7 @@ def build_digest_message(today: date, tomorrow: date) -> str:
                 typed = [e for e in day_entries if e.type == entry_type]
                 for e in typed:
                     icon = ENTRY_ICONS[entry_type]
-                    lines.append(f"  {icon} {e.content} _\(by {e.author}\)_")
+                    lines.append(f"  {icon} {_esc(e.content)} _\\(by {_esc(e.author)}\\)_")
 
         lines.append("")
 
