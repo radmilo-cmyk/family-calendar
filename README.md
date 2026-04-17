@@ -1,92 +1,121 @@
 # Family Calendar
+A shared household calendar for two people — log events, chores, and messages by day, and get a morning digest on Telegram.
 
-A shared family calendar for two people. Web app, works on mobile browser.
+## What it does
+- Monthly calendar view with day-level highlights when entries exist
+- Day view with three sections: Events, Chores, Messages — each entry shows who added it
+- Default chores list shown on every day; check them off or add custom ones from Settings
+- Incomplete custom chores carry over automatically at midnight so nothing gets lost
+- Daily Telegram digest at 08:00 (Amsterdam time) showing today and tomorrow
 
-**Features:**
-- Monthly calendar view — days with entries are highlighted
-- Day view with three sections: Events, Chores, Messages
-- Each entry shows who added it
-- Daily WhatsApp digest at 08:00 (Amsterdam time) showing today + tomorrow
+## Who it's for
+Two people sharing a home who want one simple place to coordinate — no separate apps, no group chats, just open the browser.
 
----
+## Quick start
+```bash
+git clone <repo-url>
+cd family-calendar
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env   # fill in your values
+uvicorn app.main:app --reload
+```
+Open http://localhost:8000
 
-## Setup
+## Installation
 
-### 1. Create a virtual environment and install dependencies
+**Requirements:** Python 3.11+, optional PostgreSQL for production (SQLite used locally by default)
 
 ```bash
 python3 -m venv .venv
-source .venv/bin/activate      # on Windows: .venv\Scripts\activate
+source .venv/bin/activate      # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 2. Configure your `.env` file
+## Usage examples
 
-Copy `.env` and fill in your values:
-
+**Open the calendar**
 ```
-# Your two accounts
-USER1_USERNAME=radmilo
-USER1_PASSWORD=your_password_here
-USER2_USERNAME=ana
-USER2_PASSWORD=your_password_here
-
-# A long random string — used to sign session cookies
-SECRET_KEY=some-very-long-random-string-here
-
-# Twilio WhatsApp credentials (from console.twilio.com)
-TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-TWILIO_AUTH_TOKEN=your_auth_token
-TWILIO_WHATSAPP_FROM=whatsapp:+14155238886
-
-# Phone numbers that receive the digest (with country code)
-PHONE_USER1=whatsapp:+31612345678
-PHONE_USER2=whatsapp:+31687654321
+http://localhost:8000
 ```
 
-### 3. Run the app
+**Add an entry**
+Navigate to any day → type in the Events, Chores, or Messages field → submit.
+
+**Trigger the Telegram digest manually** (without waiting for 08:00)
+```
+GET http://localhost:8000/debug/send-digest
+```
+Returns JSON with send results and a message preview.
+
+## Configuration / environment variables
+
+| Variable | Required | Description | Example |
+|---|---|---|---|
+| `USER1_USERNAME` | Yes | Login username for person 1 | `radmilo` |
+| `USER1_PASSWORD` | Yes | Password for person 1 | `yourpassword` |
+| `USER2_USERNAME` | Yes | Login username for person 2 | `ana` |
+| `USER2_PASSWORD` | Yes | Password for person 2 | `yourpassword` |
+| `SECRET_KEY` | Yes | Long random string — signs session cookies | `some-very-long-random-string` |
+| `DATABASE_URL` | No | PostgreSQL URI for production; defaults to SQLite locally | `postgresql://user:pass@host/db` |
+| `TELEGRAM_BOT_TOKEN` | No | Bot token from BotFather — digest skipped if missing | `123456:ABC-DEF1234...` |
+| `TELEGRAM_CHAT_ID_USER1` | No | Telegram chat ID for person 1 | `123456789` |
+| `TELEGRAM_CHAT_ID_USER2` | No | Telegram chat ID for person 2 | `987654321` |
+
+> Telegram vars are optional. If any are missing, the digest job is skipped at startup with a warning — everything else works normally.
+
+## Project structure
+
+```
+app/
+  main.py              # FastAPI app — all routes
+  config.py            # Loads .env, exposes settings
+  database.py          # SQLAlchemy engine + session (SQLite locally, PostgreSQL in prod)
+  models.py            # Entry + DefaultChore database models
+  auth.py              # Login, session cookies
+  entries.py           # CRUD functions for entries
+  calendar_utils.py    # Month grid builder
+  default_chores.py    # Default chores CRUD + in-memory cache
+  notifications.py     # Telegram digest builder + sender (Bot API via urllib)
+  scheduler.py         # APScheduler — midnight carryover + 08:00 Telegram digest
+  templates/           # Jinja2 HTML templates
+  static/              # CSS, favicon
+tests/
+  test_carryover.py    # Chore carryover tests
+```
+
+## Development workflow
 
 ```bash
 source .venv/bin/activate
 uvicorn app.main:app --reload
 ```
 
-Then open http://localhost:8000 in your browser.
+App runs at http://localhost:8000. SQLite database is created as `calendar.db` on first run — no migration needed locally.
 
----
+Scheduled jobs run automatically:
+- `00:00` — rolls incomplete custom chores to the next day
+- `08:00` — sends Telegram digest to both users (only if Telegram is configured)
 
-## WhatsApp setup (Twilio sandbox)
+## Testing
 
-Before you can receive messages in development, both phones must opt in:
-
-1. Go to [console.twilio.com](https://console.twilio.com) → Messaging → Try it out → Send a WhatsApp message
-2. Both phones send the join message shown there (e.g. `join <word>-<word>`) to the Twilio sandbox number
-3. You'll receive a confirmation — you're now subscribed
-
-The sandbox number is `+1 415 523 8886`. This opt-in is only needed for development. Production requires a WhatsApp Business account.
-
-**To test the digest manually** (without waiting for 08:00):
-
-```python
+```bash
 source .venv/bin/activate
-python -c "from app.notifications import send_digest; send_digest()"
+pytest tests/
 ```
 
----
+Currently covers: chore carryover logic (`tests/test_carryover.py`).
 
-## Project structure
+## Deployment
 
-```
-app/
-  main.py           # FastAPI app, all routes
-  config.py         # Loads .env, exposes settings
-  database.py       # SQLAlchemy engine + session
-  models.py         # Entry database model
-  auth.py           # Login, session cookies
-  entries.py        # CRUD functions for entries
-  calendar_utils.py # Month grid builder
-  notifications.py  # WhatsApp digest builder + sender
-  scheduler.py      # APScheduler — fires digest at 08:00
-  templates/        # Jinja2 HTML templates
-  static/           # CSS
-```
+Deploy to any VPS or platform (Render, Railway, Fly.io) with Python 3.11+:
+
+1. Set `DATABASE_URL` to your PostgreSQL URI (Supabase works)
+2. Set all required env vars
+3. Run: `uvicorn app.main:app --host 0.0.0.0 --port 8000`
+
+> `twilio` is listed in `requirements.txt` as a leftover from an earlier version — it is not used and can be removed.
+
+## License
+
+MIT

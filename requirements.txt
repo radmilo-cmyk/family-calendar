@@ -5,7 +5,6 @@ psycopg2-binary
 jinja2
 python-multipart
 itsdangerous
-twilio
 apscheduler
 python-dotenv
 pytz
