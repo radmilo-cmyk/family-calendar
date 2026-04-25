@@ -33,6 +33,10 @@
 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
 {% endset %}
 
+{% set icon_clock %}
+<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+{% endset %}
+
 <div class="day-header">
   <a href="/" class="back-link">{{ icon_back }} Back to calendar</a>
   <h2>{{ day.strftime("%A, %B %d %Y") }}</h2>
@@ -50,7 +54,16 @@
       <li class="entry-item" id="entry-{{ entry.id }}">
         <div class="entry-body">
           <div class="entry-content">{{ entry.content }}</div>
-          <div class="entry-author">— {{ entry.author }}</div>
+          <div class="entry-meta-row">
+            {% if entry.type == 'event' %}
+              {% if entry.time_start %}
+                <span class="entry-time">{{ icon_clock }} {{ entry.time_start.strftime('%H:%M') }}{% if entry.time_end %} – {{ entry.time_end.strftime('%H:%M') }}{% endif %}</span>
+              {% else %}
+                <span class="badge-allday">All day</span>
+              {% endif %}
+            {% endif %}
+            <span class="entry-author">— {{ entry.author }}</span>
+          </div>
         </div>
         <div class="entry-actions">
           <button type="button" class="btn-edit" aria-label="Edit entry"
@@ -61,7 +74,7 @@
         </div>
         <form method="post" action="/entries/{{ entry.id }}/edit" class="edit-form">
           <div class="edit-form-row">
-            <select name="entry_type">
+            <select name="entry_type" class="edit-type-select" data-entry-id="{{ entry.id }}">
               <option value="event"{% if entry.type == 'event' %} selected{% endif %}>Event</option>
               <option value="chore"{% if entry.type == 'chore' %} selected{% endif %}>Chore</option>
               <option value="message"{% if entry.type == 'message' %} selected{% endif %}>Message</option>
@@ -69,6 +82,26 @@
           </div>
           <div class="edit-form-row">
             <textarea name="content" rows="2" required>{{ entry.content }}</textarea>
+          </div>
+          {# Time slot section — visible only when entry type is event #}
+          <div class="time-slot-section edit-form-row" id="time-slot-edit-{{ entry.id }}"
+               {% if entry.type != 'event' %}style="display:none"{% endif %}>
+            <div class="time-slot-section-label">
+              {{ icon_clock }} Time slot (optional)
+            </div>
+            <div class="time-slot-row">
+              <div>
+                <span class="time-slot-label">Start</span>
+                <input type="time" name="time_start"
+                       value="{{ entry.time_start.strftime('%H:%M') if entry.time_start else '' }}">
+              </div>
+              <div>
+                <span class="time-slot-label">End</span>
+                <input type="time" name="time_end"
+                       value="{{ entry.time_end.strftime('%H:%M') if entry.time_end else '' }}">
+              </div>
+            </div>
+            <div class="time-slot-hint">Leave empty for an all-day event</div>
           </div>
           <div class="edit-form-row">
             <input type="text" name="author" value="{{ entry.author }}" placeholder="Your name" required>
@@ -186,7 +219,7 @@
   </div>
   <form method="post" action="/day/{{ day.isoformat() }}/entries" id="add-entry-form">
     <div class="form-row">
-      <select name="entry_type" required>
+      <select name="entry_type" id="add-entry-type" required>
         <option value="event">Event</option>
         <option value="chore">Chore</option>
         <option value="message">Message</option>
@@ -194,6 +227,24 @@
     </div>
     <div class="form-row">
       <textarea name="content" rows="2" placeholder="What's happening?" required></textarea>
+    </div>
+    {# Time slot section — shown only when type = event #}
+    <div class="time-slot-section form-row" id="add-time-slot-section" style="display:none">
+      <div class="time-slot-section-label">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Time slot (optional)
+      </div>
+      <div class="time-slot-row">
+        <div>
+          <span class="time-slot-label">Start</span>
+          <input type="time" name="time_start" id="add-time-start">
+        </div>
+        <div>
+          <span class="time-slot-label">End</span>
+          <input type="time" name="time_end" id="add-time-end">
+        </div>
+      </div>
+      <div class="time-slot-hint">Leave empty for an all-day event</div>
     </div>
     <button type="submit" class="btn-add" id="add-btn">Add</button>
   </form>
@@ -219,7 +270,46 @@
   document.getElementById('add-entry-form').addEventListener('submit', function () {
     var btn = document.getElementById('add-btn');
     btn.disabled = true;
-    btn.textContent = 'Adding\u2026';
+    btn.textContent = 'Adding…';
+  });
+
+  // Show/hide time slot section in the add form based on type selection.
+  var addTypeSelect = document.getElementById('add-entry-type');
+  var addTimeSlot = document.getElementById('add-time-slot-section');
+  function syncAddTimeSlot() {
+    addTimeSlot.style.display = addTypeSelect.value === 'event' ? '' : 'none';
+    if (addTypeSelect.value !== 'event') {
+      document.getElementById('add-time-start').value = '';
+      document.getElementById('add-time-end').value = '';
+    }
+  }
+  addTypeSelect.addEventListener('change', syncAddTimeSlot);
+  syncAddTimeSlot(); // run once on load so "Event" selected by default shows the section
+
+  // Show/hide time slot section in edit forms when type selector changes.
+  document.querySelectorAll('.edit-type-select').forEach(function(sel) {
+    sel.addEventListener('change', function() {
+      var entryId = this.getAttribute('data-entry-id');
+      var section = document.getElementById('time-slot-edit-' + entryId);
+      if (section) {
+        section.style.display = this.value === 'event' ? '' : 'none';
+        if (this.value !== 'event') {
+          section.querySelectorAll('input[type="time"]').forEach(function(inp) { inp.value = ''; });
+        }
+      }
+    });
+  });
+
+  // Client-side validation: time_end must be >= time_start when both set.
+  document.querySelectorAll('.edit-form, #add-entry-form').forEach(function(form) {
+    form.addEventListener('submit', function(e) {
+      var start = form.querySelector('input[name="time_start"]');
+      var end = form.querySelector('input[name="time_end"]');
+      if (start && end && start.value && end.value && end.value < start.value) {
+        e.preventDefault();
+        alert('End time must be after start time.');
+      }
+    });
   });
 
   // Submit the chore toggle form when a checkbox changes.

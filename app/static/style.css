@@ -297,6 +297,95 @@ table.calendar td.has-entries a { font-weight: 600; }
 .entry-content { flex: 1; font-size: 0.95rem; font-weight: 500; }
 .entry-author { font-size: 0.78rem; color: var(--color-text-muted); white-space: nowrap; margin-top: 2px; }
 
+/* ── Entry meta row (badges + author) ── */
+.entry-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 3px;
+}
+
+/* ── All-day badge ── */
+.badge-allday {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  background: rgba(13, 148, 136, 0.10);
+  border: 1px solid rgba(13, 148, 136, 0.20);
+  border-radius: 20px;
+  padding: 1px 8px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* ── Timed event label ── */
+.entry-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-primary-dark);
+  background: rgba(13, 148, 136, 0.06);
+  border-radius: 6px;
+  padding: 1px 7px;
+}
+
+/* ── Time slot picker section in create/edit forms ── */
+.time-slot-section {
+  background: rgba(13, 148, 136, 0.04);
+  border: 1px dashed var(--color-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.time-slot-section-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.time-slot-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.time-slot-label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  margin-bottom: 3px;
+}
+
+.time-slot-hint {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.add-entry input[type="time"],
+.edit-form input[type="time"] {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1.5px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-family: var(--font-body);
+  color: var(--color-text);
+  background: var(--color-surface);
+  outline: none;
+}
+
 .delete-form { margin: 0; }
 .btn-delete {
   background: none;

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Date, Boolean
+from sqlalchemy import Column, Integer, String, Date, Boolean, Time
 from app.database import Base
 
 
@@ -31,6 +31,10 @@ class Entry(Base):
     carried_over = Column(Boolean, default=False, nullable=False)
     # The date the chore was first manually added (None for non-carried-over entries).
     original_date = Column(Date, nullable=True)
+
+    # Optional time slot for event-type entries. NULL = all-day event.
+    time_start = Column(Time, nullable=True)
+    time_end = Column(Time, nullable=True)
 
 
 class DefaultChore(Base):

@@ -205,8 +205,11 @@ async def day_view(
     except ValueError:
         return RedirectResponse("/", status_code=302)
 
+    from datetime import time as time_type
     entries = get_entries_for_date(db, day)
-    events = [e for e in entries if e.type == "event"]
+    events_raw = [e for e in entries if e.type == "event"]
+    # All-day events (time_start is None) first, then timed events sorted by time_start
+    events = sorted(events_raw, key=lambda e: (e.time_start is not None, e.time_start or time_type.min))
     chores = [e for e in entries if e.type == "chore"]
     messages = [e for e in entries if e.type == "message"]
 
@@ -230,11 +233,14 @@ async def add_entry(
     date_str: str,
     entry_type: str = Form(...),
     content: str = Form(...),
+    time_start: str = Form(None),
+    time_end: str = Form(None),
     db: Session = Depends(get_db),
     current_user: str = Depends(require_auth),
 ):
     from datetime import date
     from app.entries import create_entry
+    from app.time_utils import parse_time
 
     if entry_type not in ("event", "chore", "message"):
         return RedirectResponse(f"/day/{date_str}?error=invalid_type", status_code=302)
@@ -246,7 +252,15 @@ async def add_entry(
     except ValueError:
         return RedirectResponse("/", status_code=302)
 
-    create_entry(db, day=day, entry_type=entry_type, content=content.strip(), author=current_user)
+    create_entry(
+        db,
+        day=day,
+        entry_type=entry_type,
+        content=content.strip(),
+        author=current_user,
+        time_start=parse_time(time_start),
+        time_end=parse_time(time_end),
+    )
     return RedirectResponse(f"/day/{date_str}", status_code=302)
 
 
@@ -272,17 +286,28 @@ async def edit_entry_route(
     entry_type: str = Form(...),
     content: str = Form(...),
     author: str = Form(...),
+    time_start: str = Form(None),
+    time_end: str = Form(None),
     db: Session = Depends(get_db),
     current_user: str = Depends(require_auth),
 ):
     from app.entries import update_entry, get_entry
+    from app.time_utils import parse_time
     entry = get_entry(db, entry_id)
     if entry is None:
         return RedirectResponse("/", status_code=302)
     if entry_type not in ("event", "chore", "message") or not content.strip():
         return RedirectResponse(f"/day/{entry.date.isoformat()}", status_code=302)
     date_str = entry.date.isoformat()
-    update_entry(db, entry_id, content=content.strip(), author=author.strip() or current_user, entry_type=entry_type)
+    update_entry(
+        db,
+        entry_id,
+        content=content.strip(),
+        author=author.strip() or current_user,
+        entry_type=entry_type,
+        time_start=parse_time(time_start),
+        time_end=parse_time(time_end),
+    )
     return RedirectResponse(f"/day/{date_str}", status_code=302)
 
 

@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, time as time_type
 from sqlalchemy.orm import Session
 from sqlalchemy import extract
 
@@ -45,9 +45,18 @@ def create_entry(
     entry_type: str,
     content: str,
     author: str,
+    time_start: time_type | None = None,
+    time_end: time_type | None = None,
 ) -> Entry:
     """Insert a new entry into the database and return it."""
-    entry = Entry(date=day, type=entry_type, content=content, author=author)
+    entry = Entry(
+        date=day,
+        type=entry_type,
+        content=content,
+        author=author,
+        time_start=time_start if entry_type == "event" else None,
+        time_end=time_end if entry_type == "event" else None,
+    )
     db.add(entry)
     db.commit()
     db.refresh(entry)  # reload from DB so entry.id is populated
@@ -67,13 +76,23 @@ def delete_entry(db: Session, entry_id: int) -> None:
         db.commit()
 
 
-def update_entry(db: Session, entry_id: int, content: str, author: str, entry_type: str) -> None:
-    """Update content, author, and type of an existing entry."""
+def update_entry(
+    db: Session,
+    entry_id: int,
+    content: str,
+    author: str,
+    entry_type: str,
+    time_start: time_type | None = None,
+    time_end: time_type | None = None,
+) -> None:
+    """Update content, author, type, and optional time slot of an existing entry."""
     entry = get_entry(db, entry_id)
     if entry:
         entry.content = content
         entry.author = author
         entry.type = entry_type
+        entry.time_start = time_start if entry_type == "event" else None
+        entry.time_end = time_end if entry_type == "event" else None
         db.commit()
 
 
