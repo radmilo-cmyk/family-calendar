@@ -1,40 +1,38 @@
-from sqlalchemy import Column, Integer, String, Date, Boolean, Time
+from sqlalchemy import Column, Integer, String, Date, Boolean, Time, ForeignKey
 from app.database import Base
 
 
+class Recurrence(Base):
+    __tablename__ = "recurrences"
 
-class Entry(Base):
-    # This tells SQLAlchemy which table in the database this class maps to.
-    __tablename__ = "entries"
-
-    # Each Column() call defines one column in the table.
-    # Integer primary_key=True means SQLite auto-assigns a unique number to each row.
     id = Column(Integer, primary_key=True, index=True)
-
-    # The date the entry belongs to (stored as a date, not datetime — no time needed).
-    date = Column(Date, nullable=False, index=True)
-
-    # One of: "event", "chore", "message"
-    type = Column(String, nullable=False)
-
-    # The text the user typed in.
+    frequency = Column(String, nullable=False)  # 'daily' | 'weekly' | 'monthly'
+    days_of_week = Column(String, nullable=True)  # JSON array e.g. "[0,2]"; only for weekly
+    start_date = Column(Date, nullable=False)
+    until_date = Column(Date, nullable=False)
+    excluded_dates = Column(String, nullable=False, default="[]")  # JSON array of YYYY-MM-DD
     content = Column(String, nullable=False)
-
-    # The username of whoever created this entry (from the session).
     author = Column(String, nullable=False)
-
-    # Chore-specific: whether the chore is done and who did it.
-    done = Column(Boolean, default=False, nullable=False)
-    done_by = Column(String, nullable=True)
-
-    # Carryover tracking: True when this entry was created by the midnight rollover job.
-    carried_over = Column(Boolean, default=False, nullable=False)
-    # The date the chore was first manually added (None for non-carried-over entries).
-    original_date = Column(Date, nullable=True)
-
-    # Optional time slot for event-type entries. NULL = all-day event.
     time_start = Column(Time, nullable=True)
     time_end = Column(Time, nullable=True)
+
+
+class Entry(Base):
+    __tablename__ = "entries"
+
+    id = Column(Integer, primary_key=True, index=True)
+    date = Column(Date, nullable=False, index=True)
+    type = Column(String, nullable=False)
+    content = Column(String, nullable=False)
+    author = Column(String, nullable=False)
+    done = Column(Boolean, default=False, nullable=False)
+    done_by = Column(String, nullable=True)
+    carried_over = Column(Boolean, default=False, nullable=False)
+    original_date = Column(Date, nullable=True)
+    time_start = Column(Time, nullable=True)
+    time_end = Column(Time, nullable=True)
+    recurrence_id = Column(Integer, ForeignKey("recurrences.id"), nullable=True)
+    is_exception = Column(Integer, default=0, nullable=False)
 
 
 class DefaultChore(Base):

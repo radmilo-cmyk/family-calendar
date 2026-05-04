@@ -37,6 +37,10 @@
 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
 {% endset %}
 
+{% set icon_repeat %}
+<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+{% endset %}
+
 <div class="day-header">
   <a href="/" class="back-link">{{ icon_back }} Back to calendar</a>
   <h2>{{ day.strftime("%A, %B %d %Y") }}</h2>
@@ -51,7 +55,9 @@
   {% if entries %}
     <ul>
       {% for entry in entries %}
-      <li class="entry-item" id="entry-{{ entry.id }}">
+      {% set is_recurring = entry.is_recurring_instance is defined and entry.is_recurring_instance %}
+      {% set item_id = "recurring-" ~ entry.recurrence_id if is_recurring else "entry-" ~ entry.id %}
+      <li class="entry-item" id="{{ item_id }}">
         <div class="entry-body">
           <div class="entry-content">{{ entry.content }}</div>
           <div class="entry-meta-row">
@@ -62,16 +68,27 @@
                 <span class="badge-allday">All day</span>
               {% endif %}
             {% endif %}
+            {% if is_recurring %}
+              <span class="badge-recurring" title="Recurring event">{{ icon_repeat }} Repeat</span>
+            {% endif %}
             <span class="entry-author">— {{ entry.author }}</span>
           </div>
         </div>
         <div class="entry-actions">
-          <button type="button" class="btn-edit" aria-label="Edit entry"
-                  onclick="toggleEdit('entry-{{ entry.id }}')">{{ icon_edit }}</button>
-          <form method="post" action="/entries/{{ entry.id }}/delete" class="delete-form">
-            <button type="submit" class="btn-delete" aria-label="Delete entry">{{ icon_delete }}</button>
-          </form>
+          {% if is_recurring %}
+            <button type="button" class="btn-edit" aria-label="Edit entry"
+                    onclick="openRecurringModal('edit', {{ entry.recurrence_id }}, '{{ day.isoformat() }}', {{ item_id|tojson }}, {{ entry.content|tojson }}, {{ entry.author|tojson }}, '{{ entry.time_start.strftime('%H:%M') if entry.time_start else '' }}', '{{ entry.time_end.strftime('%H:%M') if entry.time_end else '' }}')">{{ icon_edit }}</button>
+            <button type="button" class="btn-delete" aria-label="Delete entry"
+                    onclick="openRecurringModal('delete', {{ entry.recurrence_id }}, '{{ day.isoformat() }}', {{ item_id|tojson }})">{{ icon_delete }}</button>
+          {% else %}
+            <button type="button" class="btn-edit" aria-label="Edit entry"
+                    onclick="toggleEdit('{{ item_id }}')">{{ icon_edit }}</button>
+            <form method="post" action="/entries/{{ entry.id }}/delete" class="delete-form">
+              <button type="submit" class="btn-delete" aria-label="Delete entry">{{ icon_delete }}</button>
+            </form>
+          {% endif %}
         </div>
+        {% if not is_recurring %}
         <form method="post" action="/entries/{{ entry.id }}/edit" class="edit-form">
           <div class="edit-form-row">
             <select name="entry_type" class="edit-type-select" data-entry-id="{{ entry.id }}">
@@ -83,7 +100,6 @@
           <div class="edit-form-row">
             <textarea name="content" rows="2" required>{{ entry.content }}</textarea>
           </div>
-          {# Time slot section — visible only when entry type is event #}
           <div class="time-slot-section edit-form-row" id="time-slot-edit-{{ entry.id }}"
                {% if entry.type != 'event' %}style="display:none"{% endif %}>
             <div class="time-slot-section-label">
@@ -107,10 +123,11 @@
             <input type="text" name="author" value="{{ entry.author }}" placeholder="Your name" required>
           </div>
           <div class="edit-form-actions">
-            <button type="button" class="btn-cancel" onclick="closeEdit('entry-{{ entry.id }}')">Cancel</button>
+            <button type="button" class="btn-cancel" onclick="closeEdit('{{ item_id }}')">Cancel</button>
             <button type="submit" class="btn-save">Save</button>
           </div>
         </form>
+        {% endif %}
       </li>
       {% endfor %}
     </ul>
@@ -246,9 +263,76 @@
       </div>
       <div class="time-slot-hint">Leave empty for an all-day event</div>
     </div>
+    {# Repeat section — shown only when type = event #}
+    <div class="repeat-section form-row" id="add-repeat-section" style="display:none">
+      <div class="repeat-toggle-row">
+        <label class="repeat-toggle-label">
+          <input type="checkbox" id="repeat-toggle" name="repeat_enabled" value="1">
+          Repeat
+        </label>
+      </div>
+      <div id="repeat-fields" style="display:none">
+        <div class="repeat-row">
+          <label class="repeat-field-label">Frequency</label>
+          <select name="repeat_frequency" id="repeat-frequency">
+            <option value="daily">Daily</option>
+            <option value="weekly" selected>Weekly</option>
+            <option value="monthly">Monthly</option>
+          </select>
+        </div>
+        <div class="repeat-row" id="repeat-days-row">
+          <label class="repeat-field-label">Days</label>
+          <div class="repeat-days">
+            {% for idx, lbl in [[0,'Mon'],[1,'Tue'],[2,'Wed'],[3,'Thu'],[4,'Fri'],[5,'Sat'],[6,'Sun']] %}
+            <label class="repeat-day-label">
+              <input type="checkbox" name="repeat_days" value="{{ idx }}"> {{ lbl }}
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="repeat-row">
+          <label class="repeat-field-label">Until</label>
+          <input type="date" name="repeat_until" id="repeat-until">
+        </div>
+      </div>
+    </div>
     <button type="submit" class="btn-add" id="add-btn">Add</button>
   </form>
 </section>
+
+{# Scope modal for recurring event edit/delete #}
+<div id="recurring-modal" class="modal-overlay" style="display:none" role="dialog" aria-modal="true">
+  <div class="modal-box">
+    <p id="modal-question" class="modal-question"></p>
+    <div class="modal-actions">
+      <button type="button" class="btn-modal-primary" id="modal-this" onclick="submitRecurringAction('this')"></button>
+      <button type="button" class="btn-modal-secondary" id="modal-all" onclick="submitRecurringAction('all')"></button>
+    </div>
+    <button type="button" class="btn-modal-cancel" onclick="closeRecurringModal()">Cancel</button>
+  </div>
+</div>
+
+{# Hidden forms for recurring actions #}
+<form id="form-recur-delete-this" method="post" style="display:none">
+  <input type="hidden" name="date_str" id="recur-delete-this-date">
+</form>
+<form id="form-recur-delete-all" method="post" style="display:none">
+  <input type="hidden" name="date_str" id="recur-delete-all-date">
+</form>
+<form id="form-recur-edit-this" method="post" style="display:none">
+  <input type="hidden" name="date_str" id="recur-edit-this-date">
+  <input type="hidden" name="content" id="recur-edit-this-content">
+  <input type="hidden" name="author" id="recur-edit-this-author">
+  <input type="hidden" name="time_start" id="recur-edit-this-ts">
+  <input type="hidden" name="time_end" id="recur-edit-this-te">
+</form>
+<form id="form-recur-edit-all" method="post" style="display:none">
+  <input type="hidden" name="date_str" id="recur-edit-all-date">
+  <input type="hidden" name="content" id="recur-edit-all-content">
+  <input type="hidden" name="author" id="recur-edit-all-author">
+  <input type="hidden" name="time_start" id="recur-edit-all-ts">
+  <input type="hidden" name="time_end" id="recur-edit-all-te">
+</form>
 
 <script>
   function toggleEdit(id) {
@@ -319,6 +403,130 @@
       document.getElementById(formId).submit();
     });
   });
+
+  // Show/hide repeat section when entry type = event.
+  var addRepeatSection = document.getElementById('add-repeat-section');
+  var repeatToggle = document.getElementById('repeat-toggle');
+  var repeatFields = document.getElementById('repeat-fields');
+  var repeatFreq = document.getElementById('repeat-frequency');
+  var repeatDaysRow = document.getElementById('repeat-days-row');
+
+  addTypeSelect.addEventListener('change', function() {
+    addRepeatSection.style.display = this.value === 'event' ? '' : 'none';
+    if (this.value !== 'event') {
+      repeatToggle.checked = false;
+      repeatFields.style.display = 'none';
+    }
+  });
+  // run once on load
+  addRepeatSection.style.display = addTypeSelect.value === 'event' ? '' : 'none';
+
+  repeatToggle.addEventListener('change', function() {
+    repeatFields.style.display = this.checked ? '' : 'none';
+  });
+
+  repeatFreq.addEventListener('change', function() {
+    repeatDaysRow.style.display = this.value === 'weekly' ? '' : 'none';
+  });
+
+  // --- Recurring event scope modal ---
+  var _recurModal = {action: null, ruleId: null, dateStr: null, content: null, author: null, ts: null, te: null};
+
+  function openRecurringModal(action, ruleId, dateStr, itemId, content, author, ts, te) {
+    _recurModal = {action: action, ruleId: ruleId, dateStr: dateStr, content: content, author: author, ts: ts || '', te: te || ''};
+    var q = document.getElementById('modal-question');
+    var btnThis = document.getElementById('modal-this');
+    var btnAll = document.getElementById('modal-all');
+    if (action === 'delete') {
+      q.textContent = 'Delete this recurring event?';
+      btnThis.textContent = 'Delete this event';
+      btnAll.textContent = 'Delete this and all future';
+    } else {
+      q.textContent = 'Edit this recurring event?';
+      btnThis.textContent = 'Edit this event';
+      btnAll.textContent = 'Edit this and all future';
+    }
+    document.getElementById('recurring-modal').style.display = '';
+  }
+
+  function closeRecurringModal() {
+    document.getElementById('recurring-modal').style.display = 'none';
+  }
+
+  function submitRecurringAction(scope) {
+    var m = _recurModal;
+    if (m.action === 'delete') {
+      if (scope === 'this') {
+        var f = document.getElementById('form-recur-delete-this');
+        f.action = '/recurrences/' + m.ruleId + '/exceptions';
+        document.getElementById('recur-delete-this-date').value = m.dateStr;
+        f.submit();
+      } else {
+        var f = document.getElementById('form-recur-delete-all');
+        f.action = '/recurrences/' + m.ruleId + '/delete-from';
+        document.getElementById('recur-delete-all-date').value = m.dateStr;
+        f.submit();
+      }
+    } else {
+      if (scope === 'this') {
+        var f = document.getElementById('form-recur-edit-this');
+        f.action = '/recurrences/' + m.ruleId + '/edit-occurrence';
+        document.getElementById('recur-edit-this-date').value = m.dateStr;
+        document.getElementById('recur-edit-this-content').value = m.content || '';
+        document.getElementById('recur-edit-this-author').value = m.author || '';
+        document.getElementById('recur-edit-this-ts').value = m.ts || '';
+        document.getElementById('recur-edit-this-te').value = m.te || '';
+        // For "edit this", open an inline edit form in a simple prompt for now
+        closeRecurringModal();
+        openInlineRecurringEdit(m.ruleId, m.dateStr, m.content, m.author, m.ts, m.te, 'this');
+        return;
+      } else {
+        var f = document.getElementById('form-recur-edit-all');
+        f.action = '/recurrences/' + m.ruleId + '/edit-from';
+        document.getElementById('recur-edit-all-date').value = m.dateStr;
+        document.getElementById('recur-edit-all-content').value = m.content || '';
+        document.getElementById('recur-edit-all-author').value = m.author || '';
+        document.getElementById('recur-edit-all-ts').value = m.ts || '';
+        document.getElementById('recur-edit-all-te').value = m.te || '';
+        closeRecurringModal();
+        openInlineRecurringEdit(m.ruleId, m.dateStr, m.content, m.author, m.ts, m.te, 'all');
+        return;
+      }
+    }
+    closeRecurringModal();
+  }
+
+  // Show inline edit panel for recurring events.
+  var _recurEditEl = null;
+  function openInlineRecurringEdit(ruleId, dateStr, content, author, ts, te, scope) {
+    if (_recurEditEl) _recurEditEl.remove();
+    var endpoint = scope === 'this'
+      ? '/recurrences/' + ruleId + '/edit-occurrence'
+      : '/recurrences/' + ruleId + '/edit-from';
+    var el = document.createElement('div');
+    el.className = 'recur-edit-panel';
+    el.innerHTML = '<form method="post" action="' + endpoint + '" class="recur-edit-form">' +
+      '<input type="hidden" name="date_str" value="' + dateStr + '">' +
+      '<div class="edit-form-row"><textarea name="content" rows="2" required>' + (content || '') + '</textarea></div>' +
+      '<div class="time-slot-section edit-form-row">' +
+        '<div class="time-slot-section-label">Time slot (optional)</div>' +
+        '<div class="time-slot-row">' +
+          '<div><span class="time-slot-label">Start</span><input type="time" name="time_start" value="' + (ts || '') + '"></div>' +
+          '<div><span class="time-slot-label">End</span><input type="time" name="time_end" value="' + (te || '') + '"></div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="edit-form-row"><input type="text" name="author" value="' + (author || '') + '" placeholder="Your name" required></div>' +
+      '<div class="edit-form-actions">' +
+        '<button type="button" class="btn-cancel" onclick="closeInlineRecurringEdit()">Cancel</button>' +
+        '<button type="submit" class="btn-save">Save</button>' +
+      '</div>' +
+    '</form>';
+    document.querySelector('.add-entry').before(el);
+    _recurEditEl = el;
+  }
+  function closeInlineRecurringEdit() {
+    if (_recurEditEl) { _recurEditEl.remove(); _recurEditEl = null; }
+  }
 </script>
 
 {% endblock %}

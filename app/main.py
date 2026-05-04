@@ -19,10 +19,21 @@ async def lifespan(app: FastAPI):
     Code here runs once when the app starts (before 'yield')
     and once when it shuts down (after 'yield').
     """
-    # Create all database tables defined in our models (if they don't exist yet).
-    # We import models here so SQLAlchemy knows about the Entry table.
-    import app.models  # noqa: F401 — registers Entry + DefaultChore with SQLAlchemy
+    import app.models  # noqa: F401 — registers all models with SQLAlchemy
     Base.metadata.create_all(bind=engine)
+
+    # Idempotent column migrations for the entries table.
+    from sqlalchemy import text
+    with engine.begin() as conn:
+        for col_def in [
+            "ALTER TABLE entries ADD COLUMN recurrence_id INTEGER REFERENCES recurrences(id)",
+            "ALTER TABLE entries ADD COLUMN is_exception INTEGER NOT NULL DEFAULT 0",
+        ]:
+            try:
+                conn.execute(text(col_def))
+            except Exception:
+                pass  # column already exists
+
     logger.info("Database tables ready.")
 
     # Start the digest scheduler
@@ -235,12 +246,17 @@ async def add_entry(
     content: str = Form(...),
     time_start: str = Form(None),
     time_end: str = Form(None),
+    repeat_enabled: str = Form(None),
+    repeat_frequency: str = Form(None),
+    repeat_days: list[str] = Form(None),
+    repeat_until: str = Form(None),
     db: Session = Depends(get_db),
     current_user: str = Depends(require_auth),
 ):
     from datetime import date
     from app.entries import create_entry
     from app.time_utils import parse_time
+    from app.recurrences import create_recurrence
 
     if entry_type not in ("event", "chore", "message"):
         return RedirectResponse(f"/day/{date_str}?error=invalid_type", status_code=302)
@@ -251,6 +267,27 @@ async def add_entry(
         day = date.fromisoformat(date_str)
     except ValueError:
         return RedirectResponse("/", status_code=302)
+
+    # Recurring event creation
+    if entry_type == "event" and repeat_enabled and repeat_frequency and repeat_until:
+        try:
+            until = date.fromisoformat(repeat_until)
+        except ValueError:
+            until = None
+        if until and until >= day and repeat_frequency in ("daily", "weekly", "monthly"):
+            dow = [int(d) for d in (repeat_days or [])] if repeat_frequency == "weekly" else None
+            create_recurrence(
+                db,
+                frequency=repeat_frequency,
+                start_date=day,
+                until_date=until,
+                content=content.strip(),
+                author=current_user,
+                days_of_week=dow,
+                time_start=parse_time(time_start),
+                time_end=parse_time(time_end),
+            )
+            return RedirectResponse(f"/day/{date_str}", status_code=302)
 
     create_entry(
         db,
@@ -369,6 +406,96 @@ async def settings_page(
         "current_user": current_user,
         "default_chores": default_chores,
     })
+
+
+@app.post("/recurrences/{rule_id}/exceptions")
+async def recurrence_add_exception(
+    rule_id: int,
+    date_str: str = Form(...),
+    db: Session = Depends(get_db),
+    current_user: str = Depends(require_auth),
+):
+    from datetime import date
+    from app.recurrences import add_exception_date
+    try:
+        day = date.fromisoformat(date_str)
+    except ValueError:
+        return RedirectResponse("/", status_code=302)
+    add_exception_date(db, rule_id, day)
+    return RedirectResponse(f"/day/{date_str}", status_code=302)
+
+
+@app.post("/recurrences/{rule_id}/delete-from")
+async def recurrence_delete_from(
+    rule_id: int,
+    date_str: str = Form(...),
+    db: Session = Depends(get_db),
+    current_user: str = Depends(require_auth),
+):
+    from datetime import date
+    from app.recurrences import delete_from_date
+    try:
+        day = date.fromisoformat(date_str)
+    except ValueError:
+        return RedirectResponse("/", status_code=302)
+    delete_from_date(db, rule_id, day)
+    return RedirectResponse(f"/day/{date_str}", status_code=302)
+
+
+@app.post("/recurrences/{rule_id}/edit-occurrence")
+async def recurrence_edit_occurrence(
+    rule_id: int,
+    date_str: str = Form(...),
+    content: str = Form(...),
+    author: str = Form(...),
+    time_start: str = Form(None),
+    time_end: str = Form(None),
+    db: Session = Depends(get_db),
+    current_user: str = Depends(require_auth),
+):
+    from datetime import date
+    from app.recurrences import edit_this_occurrence
+    from app.time_utils import parse_time
+    try:
+        day = date.fromisoformat(date_str)
+    except ValueError:
+        return RedirectResponse("/", status_code=302)
+    edit_this_occurrence(
+        db, rule_id, day,
+        content=content.strip(),
+        author=author.strip() or current_user,
+        time_start=parse_time(time_start),
+        time_end=parse_time(time_end),
+    )
+    return RedirectResponse(f"/day/{date_str}", status_code=302)
+
+
+@app.post("/recurrences/{rule_id}/edit-from")
+async def recurrence_edit_from(
+    rule_id: int,
+    date_str: str = Form(...),
+    content: str = Form(...),
+    author: str = Form(...),
+    time_start: str = Form(None),
+    time_end: str = Form(None),
+    db: Session = Depends(get_db),
+    current_user: str = Depends(require_auth),
+):
+    from datetime import date
+    from app.recurrences import edit_from_date
+    from app.time_utils import parse_time
+    try:
+        day = date.fromisoformat(date_str)
+    except ValueError:
+        return RedirectResponse("/", status_code=302)
+    edit_from_date(
+        db, rule_id, day,
+        content=content.strip(),
+        author=author.strip() or current_user,
+        time_start=parse_time(time_start),
+        time_end=parse_time(time_end),
+    )
+    return RedirectResponse(f"/day/{date_str}", status_code=302)
 
 
 @app.post("/settings/default-chores")

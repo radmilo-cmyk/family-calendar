@@ -5,27 +5,31 @@ from sqlalchemy import extract
 from app.models import Entry
 
 
-def get_entries_for_date(db: Session, day: date) -> list[Entry]:
-    """Return all entries for a specific date, ordered by id (insertion order)."""
-    return db.query(Entry).filter(Entry.date == day).order_by(Entry.id).all()
+def get_entries_for_date(db: Session, day: date) -> list:
+    """Return all entries for a date, including recurring instances."""
+    from app.recurrences import instances_for_date
+    stored = db.query(Entry).filter(Entry.date == day).order_by(Entry.id).all()
+    recurring = instances_for_date(db, day)
+    return stored + recurring
 
 
-def get_entries_for_range(db: Session, start: date, end: date) -> list[Entry]:
-    """Return all entries between start and end dates (inclusive)."""
-    return (
+def get_entries_for_range(db: Session, start: date, end: date) -> list:
+    """Return all entries in [start, end], including recurring instances."""
+    from app.recurrences import instances_for_range
+    stored = (
         db.query(Entry)
         .filter(Entry.date >= start, Entry.date <= end)
         .order_by(Entry.date, Entry.id)
         .all()
     )
+    recurring = instances_for_range(db, start, end)
+    combined = sorted(stored + recurring, key=lambda e: (e.date, getattr(e, 'id', float('inf')) or float('inf')))
+    return combined
 
 
 def get_dates_with_entries(db: Session, year: int, month: int) -> set[date]:
-    """
-    Return a set of dates in the given month that have at least one entry.
-    Used by the calendar view to mark which days have content.
-    A set is used so the template can do fast 'date in dates_with_entries' checks.
-    """
+    """Return dates in the month that have at least one entry or recurring instance."""
+    from app.recurrences import dates_with_instances_for_month
     rows = (
         db.query(Entry.date)
         .filter(
@@ -35,8 +39,9 @@ def get_dates_with_entries(db: Session, year: int, month: int) -> set[date]:
         .distinct()
         .all()
     )
-    # Each row is a tuple like (date(2026,4,3),), so we unpack with [0]
-    return {row[0] for row in rows}
+    stored_dates = {row[0] for row in rows}
+    recurring_dates = dates_with_instances_for_month(db, year, month)
+    return stored_dates | recurring_dates
 
 
 def create_entry(

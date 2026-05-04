@@ -2,7 +2,7 @@
 
 - [x] 1.1 Create `migrations/add_time_slots_to_entries.sql` with ALTER TABLE to add `time_start TIME DEFAULT NULL` and `time_end TIME DEFAULT NULL` to entries table
 - [x] 1.2 Apply migration to local SQLite dev DB (DB was empty; model update creates tables with new columns on next app start)
-- [ ] 1.3 Apply migration to Supabase production DB
+- [x] 1.3 Apply migration to Supabase production DB
 
 ## 2. Backend — Model & Schema
 

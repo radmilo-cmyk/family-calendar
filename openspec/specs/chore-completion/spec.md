@@ -20,6 +20,10 @@ The system SHALL allow any authenticated user to mark a chore entry as done or u
 - **WHEN** an unauthenticated request is made to the toggle endpoint
 - **THEN** the system redirects to the login page
 
+#### Scenario: Marking a carried-over chore done stops carryover
+- **WHEN** an authenticated user marks a carried-over chore as done (`done=True`)
+- **THEN** the nightly rollover job does not create a new Entry for that chore the following midnight
+
 ### Requirement: Complete a virtual default chore
 The system SHALL allow a user to check a virtual default chore (one not yet saved as an Entry for that day). A single action SHALL create the entry AND mark it done.
 
