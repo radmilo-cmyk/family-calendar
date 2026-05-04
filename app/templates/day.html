@@ -77,9 +77,19 @@
         <div class="entry-actions">
           {% if is_recurring %}
             <button type="button" class="btn-edit" aria-label="Edit entry"
-                    onclick="openRecurringModal('edit', {{ entry.recurrence_id }}, '{{ day.isoformat() }}', {{ item_id|tojson }}, {{ entry.content|tojson }}, {{ entry.author|tojson }}, '{{ entry.time_start.strftime('%H:%M') if entry.time_start else '' }}', '{{ entry.time_end.strftime('%H:%M') if entry.time_end else '' }}')">{{ icon_edit }}</button>
+                    data-action="edit"
+                    data-rule-id="{{ entry.recurrence_id }}"
+                    data-date="{{ day.isoformat() }}"
+                    data-content="{{ entry.content|e }}"
+                    data-author="{{ entry.author|e }}"
+                    data-ts="{{ entry.time_start.strftime('%H:%M') if entry.time_start else '' }}"
+                    data-te="{{ entry.time_end.strftime('%H:%M') if entry.time_end else '' }}"
+                    onclick="openRecurringModal(this)">{{ icon_edit }}</button>
             <button type="button" class="btn-delete" aria-label="Delete entry"
-                    onclick="openRecurringModal('delete', {{ entry.recurrence_id }}, '{{ day.isoformat() }}', {{ item_id|tojson }})">{{ icon_delete }}</button>
+                    data-action="delete"
+                    data-rule-id="{{ entry.recurrence_id }}"
+                    data-date="{{ day.isoformat() }}"
+                    onclick="openRecurringModal(this)">{{ icon_delete }}</button>
           {% else %}
             <button type="button" class="btn-edit" aria-label="Edit entry"
                     onclick="toggleEdit('{{ item_id }}')">{{ icon_edit }}</button>
@@ -432,8 +442,15 @@
   // --- Recurring event scope modal ---
   var _recurModal = {action: null, ruleId: null, dateStr: null, content: null, author: null, ts: null, te: null};
 
-  function openRecurringModal(action, ruleId, dateStr, itemId, content, author, ts, te) {
-    _recurModal = {action: action, ruleId: ruleId, dateStr: dateStr, content: content, author: author, ts: ts || '', te: te || ''};
+  function openRecurringModal(btn) {
+    var action  = btn.dataset.action;
+    var ruleId  = btn.dataset.ruleId;
+    var dateStr = btn.dataset.date;
+    var content = btn.dataset.content || '';
+    var author  = btn.dataset.author || '';
+    var ts      = btn.dataset.ts || '';
+    var te      = btn.dataset.te || '';
+    _recurModal = {action: action, ruleId: ruleId, dateStr: dateStr, content: content, author: author, ts: ts, te: te};
     var q = document.getElementById('modal-question');
     var btnThis = document.getElementById('modal-this');
     var btnAll = document.getElementById('modal-all');
