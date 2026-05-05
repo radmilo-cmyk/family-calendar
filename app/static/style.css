@@ -43,6 +43,17 @@ header {
   gap: 8px;
 }
 
+header .site-title-link {
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+header .site-title-link:hover {
+  opacity: 0.8;
+}
+
 header .site-title {
   font-family: var(--font-heading);
   font-weight: 700;
