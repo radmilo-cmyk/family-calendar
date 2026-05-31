@@ -42,4 +42,43 @@
   </tbody>
 </table>
 
+{% if agenda_events or agenda_has_prev %}
+<section class="agenda">
+  <h3 class="agenda-heading">Upcoming</h3>
+  {% for day, events in agenda_events.items() %}
+  <a class="agenda-row" href="/day/{{ day.isoformat() }}">
+    <div class="agenda-date">
+      <span class="agenda-day-num">{{ day.day }}</span>
+      <span class="agenda-day-name">{{ day.strftime("%a") }}</span>
+      <span class="agenda-day-month">{{ day.strftime("%b") }}</span>
+    </div>
+    <ul class="agenda-events">
+      {% for event in events %}
+      <li class="agenda-event">
+        <span class="agenda-event-title">{{ event.content }}</span>
+        {% if event.time_start %}
+        <span class="agenda-event-time">{{ event.time_start.strftime('%H:%M') }}{% if event.time_end %} – {{ event.time_end.strftime('%H:%M') }}{% endif %}</span>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+  </a>
+  {% endfor %}
+  {% if agenda_has_prev or agenda_has_next %}
+  <div class="agenda-pagination">
+    {% if agenda_has_prev %}
+    <a class="agenda-page-btn" href="/?year={{ year }}&month={{ month }}&agenda_page={{ agenda_page - 1 }}">&#8592; Earlier</a>
+    {% else %}
+    <span class="agenda-page-btn agenda-page-btn--disabled">&#8592; Earlier</span>
+    {% endif %}
+    {% if agenda_has_next %}
+    <a class="agenda-page-btn" href="/?year={{ year }}&month={{ month }}&agenda_page={{ agenda_page + 1 }}">Later &#8594;</a>
+    {% else %}
+    <span class="agenda-page-btn agenda-page-btn--disabled">Later &#8594;</span>
+    {% endif %}
+  </div>
+  {% endif %}
+</section>
+{% endif %}
+
 {% endblock %}

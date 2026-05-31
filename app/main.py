@@ -163,11 +163,12 @@ async def calendar_root(
     request: Request,
     year: int = None,
     month: int = None,
+    agenda_page: int = 0,
     db: Session = Depends(get_db),
     current_user: str = Depends(require_auth),
 ):
     from app.calendar_utils import build_month_grid, get_year_month
-    from app.entries import get_dates_with_entries
+    from app.entries import get_dates_with_entries, get_upcoming_events
     import pytz
     from datetime import datetime
 
@@ -178,6 +179,7 @@ async def calendar_root(
 
     grid = build_month_grid(year, month)
     dates_with_entries = get_dates_with_entries(db, year, month)
+    agenda_events, agenda_has_prev, agenda_has_next = get_upcoming_events(db, page=agenda_page)
 
     prev_year, prev_month = get_year_month(year, month, -1)
     next_year, next_month = get_year_month(year, month, +1)
@@ -188,6 +190,10 @@ async def calendar_root(
         "month": month,
         "grid": grid,
         "dates_with_entries": dates_with_entries,
+        "agenda_events": agenda_events,
+        "agenda_page": agenda_page,
+        "agenda_has_prev": agenda_has_prev,
+        "agenda_has_next": agenda_has_next,
         "prev_year": prev_year,
         "prev_month": prev_month,
         "next_year": next_year,

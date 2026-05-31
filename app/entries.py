@@ -44,6 +44,41 @@ def get_dates_with_entries(db: Session, year: int, month: int) -> set[date]:
     return stored_dates | recurring_dates
 
 
+def get_upcoming_events(db: Session, page: int = 0, page_size: int = 5) -> tuple:
+    """Return upcoming events grouped by date, paginated by date group.
+
+    Returns (agenda_events: dict[date, list[Entry]], has_prev: bool, has_next: bool).
+    Recurring virtual instances excluded — agenda shows stored entries only.
+    """
+    from datetime import date as date_type
+    from datetime import time as time_type
+
+    today = date_type.today()
+    rows = (
+        db.query(Entry)
+        .filter(Entry.type == "event", Entry.date >= today)
+        .order_by(Entry.date, Entry.id)
+        .all()
+    )
+
+    rows.sort(key=lambda e: (e.date, e.time_start is not None, e.time_start or time_type.min))
+
+    grouped: dict = {}
+    for entry in rows:
+        grouped.setdefault(entry.date, []).append(entry)
+
+    all_dates = list(grouped.keys())
+    start = page * page_size
+    end = start + page_size
+    page_dates = all_dates[start:end]
+
+    return (
+        {d: grouped[d] for d in page_dates},
+        page > 0,
+        end < len(all_dates),
+    )
+
+
 def create_entry(
     db: Session,
     day: date,
