@@ -4,11 +4,12 @@
 TBD - created by archiving change family-calendar-app. Update Purpose after archive.
 ## Requirements
 ### Requirement: Monthly calendar grid is displayed
-The system SHALL display a monthly calendar grid showing all days of the current month. Days that have at least one entry (including recurring event instances) SHALL be visually marked.
+The system SHALL display a monthly calendar grid showing all days of the current month. Days that have at least one entry (including recurring event instances) SHALL be visually marked. Below the grid, the system SHALL render a read-only agenda list of upcoming events (see `home-agenda-list` spec for full agenda requirements).
 
 #### Scenario: View current month
 - **WHEN** an authenticated user visits `/`
 - **THEN** the system displays a calendar grid for the current month in the Europe/Amsterdam timezone
+- **AND** a read-only agenda list of upcoming events is rendered below the grid
 
 #### Scenario: Day with entries is marked
 - **WHEN** a day has one or more entries (standalone or recurring instances)
