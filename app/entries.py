@@ -47,24 +47,30 @@ def get_dates_with_entries(db: Session, year: int, month: int) -> set[date]:
 def get_upcoming_events(db: Session, page: int = 0, page_size: int = 5) -> tuple:
     """Return upcoming events grouped by date, paginated by date group.
 
-    Returns (agenda_events: dict[date, list[Entry]], has_prev: bool, has_next: bool).
-    Recurring virtual instances excluded — agenda shows stored entries only.
+    Includes both stored entries and virtual recurring instances.
+    Returns (agenda_events: dict[date, list], has_prev: bool, has_next: bool).
     """
-    from datetime import date as date_type
+    from datetime import date as date_type, timedelta
     from datetime import time as time_type
+    from app.recurrences import instances_for_range
 
     today = date_type.today()
-    rows = (
+    horizon = today + timedelta(days=365)
+
+    stored = (
         db.query(Entry)
-        .filter(Entry.type == "event", Entry.date >= today)
-        .order_by(Entry.date, Entry.id)
+        .filter(Entry.type == "event", Entry.date >= today, Entry.date <= horizon)
         .all()
     )
+    # Exception dates are already excluded from recurring instances via excluded_dates,
+    # so stored exception entries and virtual instances never overlap.
+    recurring = instances_for_range(db, today, horizon)
 
-    rows.sort(key=lambda e: (e.date, e.time_start is not None, e.time_start or time_type.min))
+    all_entries = stored + recurring
+    all_entries.sort(key=lambda e: (e.date, e.time_start is not None, e.time_start or time_type.min))
 
     grouped: dict = {}
-    for entry in rows:
+    for entry in all_entries:
         grouped.setdefault(entry.date, []).append(entry)
 
     all_dates = list(grouped.keys())
