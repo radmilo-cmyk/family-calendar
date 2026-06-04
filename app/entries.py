@@ -52,21 +52,17 @@ def get_upcoming_events(db: Session, page: int = 0, page_size: int = 5) -> tuple
     """
     from datetime import date as date_type, timedelta
     from datetime import time as time_type
-    from app.recurrences import instances_for_range
 
     today = date_type.today()
     horizon = today + timedelta(days=365)
 
     stored = (
         db.query(Entry)
-        .filter(Entry.type == "event", Entry.date >= today, Entry.date <= horizon)
+        .filter(Entry.type == "event", Entry.date >= today, Entry.date <= horizon, Entry.recurrence_id.is_(None))
         .all()
     )
-    # Exception dates are already excluded from recurring instances via excluded_dates,
-    # so stored exception entries and virtual instances never overlap.
-    recurring = instances_for_range(db, today, horizon)
 
-    all_entries = stored + recurring
+    all_entries = stored
     all_entries.sort(key=lambda e: (e.date, e.time_start is not None, e.time_start or time_type.min))
 
     grouped: dict = {}
